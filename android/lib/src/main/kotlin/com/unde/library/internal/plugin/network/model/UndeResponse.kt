@@ -1,6 +1,6 @@
-package com.unde.library.plugin.network.model
+package com.unde.library.internal.plugin.network.model
 
-data class UndeResponse(
+internal data class UndeResponse(
     val code: Int,
     val message: String,
     val toMultimap: Map<String, List<String>>,

@@ -1,6 +1,6 @@
-package com.unde.library.plugin.network.model
+package com.unde.library.internal.plugin.network.model
 
-data class UndeRequest(
+internal data class UndeRequest(
     val url: String,
     val method: String,
     val headers: Map<String, List<String>>,

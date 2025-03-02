@@ -1,7 +1,7 @@
 package com.unde.library
 
-import com.unde.library.ktor.client.HttpClientWrapper
-import com.unde.library.ktor.interceptor.UndeHttpInterceptor
+import com.unde.library.internal.proxy.network.client.HttpClientWrapper
+import com.unde.library.external.network.interceptor.ktor.UndeHttpInterceptor
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -12,7 +12,8 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 class UndeLibraryTest {
-    @Test fun checkOkhttpRequest() {
+    @Test
+    fun checkOkhttpRequest() {
         val classUnderTest = UndeLibrary()
         assertTrue(true, "someLibraryMethod should return 'true'")
         runBlocking {
