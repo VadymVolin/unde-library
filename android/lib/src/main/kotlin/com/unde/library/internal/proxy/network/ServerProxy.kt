@@ -19,6 +19,7 @@ internal object ServerProxy {
 
     private var wsSession = null
 
+//  TODO:  receive scope from unde library class and listen active session, state flow can be used in this case
     internal fun initialize() {
 //        internalServerScope.launch(Dispatchers.IO) {
 //            client.webSocket(
