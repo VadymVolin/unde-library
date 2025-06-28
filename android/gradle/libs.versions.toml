@@ -2,7 +2,7 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-ktor-version = "3.1.0"
+ktor-version = "3.2.0"
 junit-jupiter-engine = "5.11.1"
 
 [libraries]
@@ -14,4 +14,4 @@ ktor-json-serialization = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-engine" }
 
 [plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.0.21" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.2.0" }
