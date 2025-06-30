@@ -2,6 +2,7 @@ package com.unde.library.internal.extensions
 
 import com.unde.library.internal.plugin.network.model.UndeRequest
 import com.unde.library.internal.plugin.network.model.UndeResponse
+import io.ktor.client.call.*
 import io.ktor.util.*
 
 internal fun io.ktor.client.request.HttpRequest.toUndeRequest() = UndeRequest(
@@ -10,12 +11,13 @@ internal fun io.ktor.client.request.HttpRequest.toUndeRequest() = UndeRequest(
     this.headers.toMap(),
     this.content.toString()
 )
-internal fun io.ktor.client.request.HttpResponseData.toUndeResponse() = UndeResponse(
-    this.statusCode.value,
-    this.statusCode.description,
+
+internal suspend fun io.ktor.client.statement.HttpResponse.toUndeResponse() = UndeResponse(
+    this.status.value,
+    this.status.description,
     this.headers.toMap(),
     this.version.toString(),
-    this.body.toString()
+    this.body<String>()
 )
 
 internal fun okhttp3.Request.toUndeRequest() = UndeRequest(

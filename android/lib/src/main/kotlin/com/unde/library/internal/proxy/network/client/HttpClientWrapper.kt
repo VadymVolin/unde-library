@@ -13,7 +13,7 @@ import java.time.Duration
 internal object HttpClientWrapper {
     private val httpClient = HttpClient(OkHttp) {
         engine {
-            // TODO: The pingInterval and pingIntervalMillis properties are not applicable for the OkHttp engine
+            // The pingInterval and pingIntervalMillis properties are not applicable for the OkHttp engine
             //  https://ktor.io/docs/client-websockets.html#configure_plugin
             preconfigured = OkHttpClient.Builder()
                 .pingInterval(Duration.ofSeconds(DEFAULT_PING_INTERVAL_SEC))

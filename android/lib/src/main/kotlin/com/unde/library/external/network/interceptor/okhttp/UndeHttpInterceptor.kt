@@ -1,4 +1,4 @@
-package com.unde.library.external.network.interceptor.ktor
+package com.unde.library.external.network.interceptor.okhttp
 
 import com.unde.library.internal.extensions.toUndeRequest
 import com.unde.library.internal.extensions.toUndeResponse
@@ -10,9 +10,7 @@ import okhttp3.Response
 class UndeHttpInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        println("Request: $request")
         val response = chain.proceed(request)
-        println("Response: $response")
         UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(), response.toUndeResponse()))
         return response
     }
