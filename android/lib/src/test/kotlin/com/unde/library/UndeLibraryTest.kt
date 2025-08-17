@@ -1,6 +1,6 @@
 package com.unde.library
 
-import com.unde.library.external.network.interceptor.ktor.UndeHttpSendInterceptor
+import com.unde.library.external.network.interceptor.ktor.UndeHttpInterceptor as KtorInterceptor
 import com.unde.library.external.network.interceptor.okhttp.UndeHttpInterceptor
 import com.unde.library.internal.constants.DEFAULT_CONNECTION_TIMEOUT_SEC
 import com.unde.library.internal.constants.DEFAULT_PING_INTERVAL_SEC
@@ -36,7 +36,7 @@ class UndeLibraryTest {
         }
     }
 
-    val interceptor = UndeHttpSendInterceptor()
+    val interceptor = KtorInterceptor()
     val ktorHttpClient = HttpClient(OkHttp) {
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(Json)

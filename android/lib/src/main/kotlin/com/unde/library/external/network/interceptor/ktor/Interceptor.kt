@@ -8,7 +8,7 @@ import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 
-class UndeHttpSendInterceptor : HttpSendInterceptor {
+class UndeHttpInterceptor : HttpSendInterceptor {
 
     override suspend fun invoke(sender: Sender, requestBuilder: HttpRequestBuilder): HttpClientCall {
         return sender.execute(requestBuilder).also {
