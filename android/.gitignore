@@ -49,6 +49,12 @@ build/
 .idea/misc.xml
 .idea/protoeditor.xml
 .idea/uiDesigner.xml
+.idea/.gitignore
+.idea/android.iml
+.idea/AndroidProjectSystem.xml
+.idea/kotlinc.xml
+.idea/vcs.xml
+.idea/workspace.xml
 node_modules/
 .rpt2_cache/
 local.properties

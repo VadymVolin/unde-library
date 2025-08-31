@@ -2,16 +2,23 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-ktor-version = "3.2.0"
-junit-jupiter-engine = "5.11.1"
+agp-version = "8.11.1"
+kotlin-version = "2.2.10"
+ktor-version = "3.2.3"
+coreKtx = "1.17.0"
+junit-jupiter-engine = "5.13.4"
 
 [libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor-version" }
 ktor-engine = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor-version" }
 ktor-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor-version" }
 ktor-json-serialization = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor-version" }
-
+#test
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-engine" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 
 [plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.2.0" }
+android-library = { id = "com.android.library", version.ref = "agp-version" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin-version" }
