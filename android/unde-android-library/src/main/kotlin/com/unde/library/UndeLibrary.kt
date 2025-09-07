@@ -9,4 +9,8 @@ class UndeLibrary {
         CacheProxy.initialize(networkCacheFile, databaseCacheFile)
         ServerProxy.initialize()
     }
+
+    fun destroy() {
+        ServerProxy.destroy()
+    }
 }
