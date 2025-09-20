@@ -14,11 +14,16 @@ import io.ktor.serialization.kotlinx.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import org.junit.jupiter.api.BeforeEach
 import java.time.Duration
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.seconds
 
 class UndeLibraryTest {
+
+//    @get:BeforeEach
+//    val undeLibrary = UndeLibrary()
 
     val okHttpClient = HttpClient(OkHttp) {
         engine {

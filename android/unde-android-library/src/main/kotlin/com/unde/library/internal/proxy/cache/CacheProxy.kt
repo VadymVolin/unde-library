@@ -1,5 +1,6 @@
 package com.unde.library.internal.proxy.cache
 
+import android.util.Log
 import com.unde.library.internal.plugin.network.model.UndeRequestResponse
 import kotlinx.io.IOException
 import java.io.File
@@ -9,10 +10,13 @@ import java.util.zip.GZIPOutputStream
 
 internal object CacheProxy {
 
+    private val TAG: String = CacheProxy.javaClass.simpleName
+
     private var networkCacheFile: File? = null
     private var databaseCacheFile: File? = null
 
     internal fun initialize(networkCacheFile: File? = null, databaseCacheFile: File? = null) {
+        Log.d(TAG, "Initialize $TAG")
         this.networkCacheFile = networkCacheFile
         this.databaseCacheFile = databaseCacheFile
     }
