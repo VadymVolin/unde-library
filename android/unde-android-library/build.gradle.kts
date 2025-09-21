@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 android {
@@ -54,12 +55,10 @@ dependencies {
     api(libs.ktor.engine)
     api(libs.ktor.websockets)
     api(libs.ktor.json.serialization)
+    api(libs.kotlinx.json.serialization)
 
-    // Use the Kotlin JUnit 5 integration.
-    testImplementation(libs.kotlin.test.junit5)
-    // Use the JUnit 5 integration.
-    testImplementation(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.junit)
+    testImplementation(libs.junit.androidx)
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

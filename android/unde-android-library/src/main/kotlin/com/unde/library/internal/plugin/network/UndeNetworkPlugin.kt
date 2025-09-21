@@ -10,7 +10,7 @@ internal object UndeNetworkPlugin {
     internal fun handleRequest(undeRequestResponse: UndeRequestResponse) {
         println("UndeRequest: ${undeRequestResponse.request}")
         println("UndeResponse: ${undeRequestResponse.response}")
-        ServerProxy.send(WSMessage.Network(Json.encodeToString(undeRequestResponse)))
+        ServerProxy.send(WSMessage.Network(undeRequestResponse))
 //        CacheProxy.cacheNetwork(undeRequestResponse)
     }
 }

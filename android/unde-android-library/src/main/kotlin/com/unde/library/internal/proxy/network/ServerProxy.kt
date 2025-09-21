@@ -6,10 +6,12 @@ import com.unde.library.internal.constants.DEFAULT_REAL_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_SERVER_WEBSOCKET_PATH
 import com.unde.library.internal.constants.DEFAULT_SERVER_WS_PORT
 import com.unde.library.internal.plugin.network.model.WSMessage
+import com.unde.library.internal.proxy.cache.CacheProxy
 import com.unde.library.internal.proxy.network.client.HttpClientWrapper
 import com.unde.library.internal.utils.DeviceManager
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
+import io.ktor.util.reflect.TypeInfo
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +30,8 @@ internal object ServerProxy {
     private var wsSession: DefaultClientWebSocketSession? = null
 
     internal fun initialize() {
-        Log.d(TAG, "Initialize $TAG")
+        println(TAG + " Initialize $TAG")
+//        Log.d(TAG, "Initialize $TAG")
         internalServerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         wsFlow = flow {
             wsSession = client.webSocketSession(
@@ -44,25 +47,30 @@ internal object ServerProxy {
             ensureActive()
             wsFlow?.collect {
                 ensureActive()
-                Log.d(TAG, "Message has been received: $it")
+                println(TAG + " Message has been received: $it")
             }
         }
     }
 
     internal fun send(wsMessage: WSMessage) {
-        Log.d(TAG, "send: ${wsMessage.javaClass.name}")
+//        Log.d(TAG, "send: ${wsMessage.javaClass.name}")
+        println(TAG + " send: ${(wsMessage as? WSMessage.Network)?.data?.response?.body}")
+        println(TAG + " send: ${Json.encodeToString(wsMessage)}")
         internalServerScope?.launch {
             ensureActive()
             wsSession?.send(Frame.Text(Json.encodeToString(wsMessage)))
-        } ?: Log.d(TAG, "Cannot send message, scope is canceled!")
+        }
+//        } ?: Log.d(TAG, "Cannot send message, scope is canceled!")
     }
 
     internal fun destroy() = internalServerScope?.launch {
-        Log.d(TAG, "Destroy $TAG")
+//        Log.d(TAG, "Destroy $TAG")
+        println(TAG + " Destroy $TAG")
         ensureActive()
         wsSessionJob?.cancel()
         wsSession?.close()
         wsSession = null
         cancel()
-    } ?: Log.d(TAG, "Cannot close ws session, scope is canceled or null!")
+    }
+//    } ?: Log.d(TAG, "Cannot close ws session, scope is canceled or null!")
 }

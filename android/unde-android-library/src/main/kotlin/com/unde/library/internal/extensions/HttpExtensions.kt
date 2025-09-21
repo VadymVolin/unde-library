@@ -32,5 +32,6 @@ internal fun okhttp3.Response.toUndeResponse() = UndeResponse(
     this.message,
     this.headers.toMultimap(),
     this.protocol.toString(),
-    this.body?.toString()
+    // TODO: Not a real response body 
+    this.body.toString()
 )
