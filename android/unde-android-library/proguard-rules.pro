@@ -19,3 +19,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Serializer for classes with named companion objects are retrieved using `getDeclaredClasses`.
+# If you have any, replace classes with those containing named companion objects.
+# Keep kotlinx.serialization Json
+-keep class kotlinx.serialization.** { *; }
+-dontwarn kotlinx.serialization.**

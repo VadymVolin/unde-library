@@ -23,7 +23,7 @@ internal object HttpClientWrapper {
         }
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(Json)
-            maxFrameSize = Long.MAX_VALUE
+//            maxFrameSize = Long.MAX_VALUE
         }
     }
 

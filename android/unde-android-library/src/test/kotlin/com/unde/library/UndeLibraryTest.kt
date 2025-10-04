@@ -24,7 +24,9 @@ class UndeLibraryTest {
 
     companion object {
         @get:BeforeClass
-        val undeLibrary = UndeLibrary()
+        val undeLibrary = UndeLibrary().also {
+            it.initialize()
+        }
 
         @get:BeforeClass
         val okHttpClient = HttpClient(OkHttp) {

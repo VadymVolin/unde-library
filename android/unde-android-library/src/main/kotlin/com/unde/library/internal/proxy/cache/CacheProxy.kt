@@ -16,8 +16,7 @@ internal object CacheProxy {
     private var databaseCacheFile: File? = null
 
     internal fun initialize(networkCacheFile: File? = null, databaseCacheFile: File? = null) {
-//        Log.d(TAG, "Initialize $TAG")
-        println(TAG + " Initialize $TAG")
+        Log.d(TAG, "Initialize $TAG")
         this.networkCacheFile = networkCacheFile
         this.databaseCacheFile = databaseCacheFile
     }

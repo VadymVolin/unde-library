@@ -15,9 +15,6 @@ android {
         lint.targetSdk = 36
         consumerProguardFiles("consumer-rules.pro")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        aarMetadata {
-            minCompileSdk = 21
-        }
     }
 
     buildTypes {
@@ -52,7 +49,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     api(libs.ktor.client)
-    api(libs.ktor.engine)
+    api(libs.ktor.engine.client)
     api(libs.ktor.websockets)
     api(libs.ktor.json.serialization)
     api(libs.kotlinx.json.serialization)
