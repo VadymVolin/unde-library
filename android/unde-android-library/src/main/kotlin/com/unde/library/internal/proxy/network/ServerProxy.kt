@@ -5,7 +5,7 @@ import com.unde.library.internal.constants.DEFAULT_EMULATOR_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_REAL_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_SERVER_WEBSOCKET_PATH
 import com.unde.library.internal.constants.DEFAULT_SERVER_WS_PORT
-import com.unde.library.internal.plugin.network.model.WSMessage
+import com.unde.library.internal.proxy.network.model.WSMessage
 import com.unde.library.internal.proxy.network.client.HttpClientWrapper
 import com.unde.library.internal.utils.DeviceManager
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
@@ -15,11 +15,9 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -36,10 +34,6 @@ internal object ServerProxy {
     private val client by lazy { HttpClientWrapper.get() }
     private var internalServerScope: CoroutineScope? = null
     private var wsSession: DefaultClientWebSocketSession? = null
-        set(value) {
-            Log.d(TAG, "SET WEB SOCKET SESSION: ")
-            field = value
-        }
 
     internal fun initialize() {
         Log.d(TAG, "Initialize $TAG")
@@ -67,8 +61,9 @@ internal object ServerProxy {
     internal fun send(wsMessage: WSMessage) {
         internalServerScope?.launch {
             ensureActive()
-            wsSession?.send(Frame.Text(Json.encodeToString(wsMessage)))?.also {
-                Log.d(TAG, "Send message: ${wsMessage.javaClass.name}")
+            val encodedJson = Json.encodeToString<WSMessage>(wsMessage)
+            wsSession?.send(Frame.Text(encodedJson))?.also {
+                Log.d(TAG, "Send message[${wsMessage.javaClass.simpleName}]: $encodedJson")
             }
         } ?: Log.d(TAG, "Cannot send message, scope is canceled!")
     }
