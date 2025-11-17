@@ -1,5 +1,6 @@
 package com.unde.library.external.network.interceptor.ktor
 
+import android.util.Log
 import com.unde.library.internal.extensions.toUndeRequest
 import com.unde.library.internal.extensions.toUndeResponse
 import com.unde.library.internal.plugin.network.UndeNetworkPlugin
@@ -14,6 +15,8 @@ class UndeHttpInterceptor : suspend (Sender, HttpRequestBuilder) -> HttpClientCa
         return sender.execute(requestBuilder).also {
             val request = it.request
             val response = it.response
+            println("FORTRA invoke request: " + request.toUndeRequest())
+            println("FORTRA invoke response: " + response.toUndeResponse())
             UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(), response.toUndeResponse()))
         }
     }

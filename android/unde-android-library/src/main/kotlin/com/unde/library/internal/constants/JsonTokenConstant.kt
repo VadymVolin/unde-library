@@ -1,5 +1,4 @@
-
-package com.unde.server.constants
+package com.unde.library.internal.constants
 
 internal object JsonTokenConstant {
     // type json token

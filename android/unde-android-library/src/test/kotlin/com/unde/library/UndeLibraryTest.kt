@@ -60,9 +60,8 @@ class UndeLibraryTest {
     @Test
     fun checkOkhttpRequestInterceptor() {
         runBlocking {
-            println("checkOkhttpRequestInterceptor:")
-            val responseOkhttp = okHttpClient.get("https://www.google.com").body<String>()
-            println("checkOkhttpRequestInterceptor: ${responseOkhttp.length}")
+            println("checkOkhttpRequestInterceptor:======================================================================================================================================================================================")
+            val responseOkhttp = okHttpClient.get("https://www.google.com")
         }
         Thread.sleep(5L.seconds.inWholeMilliseconds)
     }
@@ -70,9 +69,8 @@ class UndeLibraryTest {
     @Test
     fun checkKtorRequestInterceptor() {
         runBlocking {
-            println("checkKtorRequestInterceptor:")
+            println("checkKtorRequestInterceptor:======================================================================================================================================================================================")
             val responseKtor = ktorHttpClient.get("https://www.google.com").body<String>()
-            println("checkKtorRequestInterceptor: ${responseKtor.length}")
         }
         Thread.sleep(5L.seconds.inWholeMilliseconds)
     }

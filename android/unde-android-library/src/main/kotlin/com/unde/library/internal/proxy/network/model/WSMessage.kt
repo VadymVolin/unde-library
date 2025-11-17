@@ -1,7 +1,7 @@
 package com.unde.library.internal.proxy.network.model
 
 import com.unde.library.internal.plugin.network.model.UndeRequestResponse
-import com.unde.server.constants.JsonTokenConstant
+import com.unde.library.internal.constants.JsonTokenConstant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
