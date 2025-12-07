@@ -20,6 +20,12 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+# Keep public API
+-keep public class com.unde.library.** { public *; }
+
+# Keep external interceptors (used by consumers)
+-keep class com.unde.library.external.** { *; }
+
 # Serializer for classes with named companion objects are retrieved using `getDeclaredClasses`.
 # If you have any, replace classes with those containing named companion objects.
 # Keep kotlinx.serialization Json
