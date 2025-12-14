@@ -4,11 +4,11 @@ import com.unde.library.internal.extensions.toUndeRequest
 import com.unde.library.internal.extensions.toUndeResponse
 import com.unde.library.internal.plugin.network.UndeNetworkPlugin
 import com.unde.library.internal.plugin.network.model.UndeRequestResponse
-import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.request.*
+import io.ktor.client.call.HttpClientCall
+import io.ktor.client.plugins.Sender
+import io.ktor.client.request.HttpRequestBuilder
 
-class UndeHttpInterceptor : HttpSendInterceptor {
+class UndeHttpInterceptor : suspend (Sender, HttpRequestBuilder) -> HttpClientCall {
 
     override suspend fun invoke(sender: Sender, requestBuilder: HttpRequestBuilder): HttpClientCall {
         return sender.execute(requestBuilder).also {
@@ -17,6 +17,7 @@ class UndeHttpInterceptor : HttpSendInterceptor {
             UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(), response.toUndeResponse()))
         }
     }
+
 }
 
 //class UndeHttpPipelineInterceptor: PipelineInterceptor<Any, HttpRequestBuilder> {

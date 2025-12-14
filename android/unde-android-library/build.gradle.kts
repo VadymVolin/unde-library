@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 android {
@@ -14,9 +15,6 @@ android {
         lint.targetSdk = 36
         consumerProguardFiles("consumer-rules.pro")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        aarMetadata {
-            minCompileSdk = 21
-        }
     }
 
     buildTypes {
@@ -51,15 +49,13 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     api(libs.ktor.client)
-    api(libs.ktor.engine)
+    api(libs.ktor.engine.client)
     api(libs.ktor.websockets)
     api(libs.ktor.json.serialization)
+    api(libs.kotlinx.json.serialization)
 
-    // Use the Kotlin JUnit 5 integration.
-    testImplementation(libs.kotlin.test.junit5)
-    // Use the JUnit 5 integration.
-    testImplementation(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.junit)
+    testImplementation(libs.junit.androidx)
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
