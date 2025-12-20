@@ -68,3 +68,4 @@ kotlin-ide/
 .teamcity/
 .npmrc
 /.idea/
+.vscode

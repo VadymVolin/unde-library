@@ -9,6 +9,7 @@ ktor-version = "3.3.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
+vanniktech-version = "0.35.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -25,3 +26,5 @@ junit-androidx = { group = "androidx.test.ext", name = "junit", version.ref = "j
 android-library = { id = "com.android.library", version.ref = "agp-version" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin-version" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }
+vanniktech-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-version" }
+
