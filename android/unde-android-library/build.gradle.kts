@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.unde.library"
+    namespace = "io.github.vadymvolin"
     compileSdk = 36
 
     defaultConfig {
@@ -65,15 +65,14 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
-
 mavenPublishing {
-  coordinates("com.example.mylibrary", "mylibrary-runtime", "1.0.3-SNAPSHOT")
+  coordinates("io.github.vadymvolin", "unde-android-library", "0.0.1")
 
   pom {
-    name.set("My Library")
-    description.set("A description of what my library does.")
-    inceptionYear.set("2020")
-    url.set("https://github.com/username/mylibrary/")
+    name.set("Unde Android Library")
+    description.set("Unde Android Library")
+    inceptionYear.set("2025")
+    url.set("https://github.com/VadymVolin/unde-library/")
     licenses {
       license {
         name.set("The Apache License, Version 2.0")
@@ -83,15 +82,18 @@ mavenPublishing {
     }
     developers {
       developer {
-        id.set("username")
-        name.set("User Name")
-        url.set("https://github.com/username/")
+        id.set("VadymVolin")
+        name.set("Vadym Volin")
+        url.set("https://github.com/VadymVolin/")
       }
     }
     scm {
-      url.set("https://github.com/username/mylibrary/")
-      connection.set("scm:git:git://github.com/username/mylibrary.git")
-      developerConnection.set("scm:git:ssh://git@github.com/username/mylibrary.git")
+      url.set("https://github.com/VadymVolin/unde-library/")
+      connection.set("scm:git:git://github.com/VadymVolin/unde-library.git")
+      developerConnection.set("scm:git:ssh://git@github.com/VadymVolin/unde-library.git")
     }
   }
+  
+  publishToMavenCentral()
+  signAllPublications()
 }

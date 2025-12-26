@@ -69,3 +69,4 @@ kotlin-ide/
 .npmrc
 /.idea/
 .vscode
+secrets.properties
