@@ -68,3 +68,5 @@ kotlin-ide/
 .teamcity/
 .npmrc
 /.idea/
+.vscode
+secrets.properties

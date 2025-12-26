@@ -4,10 +4,11 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.vanniktech.publish)
 }
 
 android {
-    namespace = "com.unde.library"
+    namespace = "io.github.vadymvolin"
     compileSdk = 36
 
     defaultConfig {
@@ -63,4 +64,36 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+}
+mavenPublishing {
+  coordinates("io.github.vadymvolin", "unde-android-library", "0.0.1")
+
+  pom {
+    name.set("Unde Android Library")
+    description.set("Unde Android Library")
+    inceptionYear.set("2025")
+    url.set("https://github.com/VadymVolin/unde-library/")
+    licenses {
+      license {
+        name.set("The Apache License, Version 2.0")
+        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+        distribution.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+      }
+    }
+    developers {
+      developer {
+        id.set("VadymVolin")
+        name.set("Vadym Volin")
+        url.set("https://github.com/VadymVolin/")
+      }
+    }
+    scm {
+      url.set("https://github.com/VadymVolin/unde-library/")
+      connection.set("scm:git:git://github.com/VadymVolin/unde-library.git")
+      developerConnection.set("scm:git:ssh://git@github.com/VadymVolin/unde-library.git")
+    }
+  }
+  
+  publishToMavenCentral()
+  signAllPublications()
 }
