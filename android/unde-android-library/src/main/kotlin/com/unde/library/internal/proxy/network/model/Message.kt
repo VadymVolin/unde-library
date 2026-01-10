@@ -7,28 +7,28 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
-internal sealed class WSMessage {
+internal sealed class Message {
     @SerialName(JsonTokenConstant.TYPE_COMMAND_TOKEN)
     @Serializable
-    data class Command(val data: JsonObject) : WSMessage()
+    data class Command(val data: JsonObject) : Message()
 
     @SerialName(JsonTokenConstant.TYPE_NETWORK_TOKEN)
     @Serializable
-    data class Network(val data: UndeRequestResponse) : WSMessage()
+    data class Network(val data: UndeRequestResponse) : Message()
 
     @SerialName(JsonTokenConstant.TYPE_DATABASE_TOKEN)
     @Serializable
-    data class Database(val data: JsonObject) : WSMessage()
+    data class Database(val data: JsonObject) : Message()
 
     @SerialName(JsonTokenConstant.TYPE_TELEMETRY_TOKEN)
     @Serializable
-    data class Telemetry(val data: JsonObject) : WSMessage()
+    data class Telemetry(val data: JsonObject) : Message()
 
     @SerialName(JsonTokenConstant.TYPE_LOGCAT_TOKEN)
     @Serializable
-    data class Logcat(val data: JsonObject) : WSMessage()
+    data class Logcat(val data: JsonObject) : Message()
 
     @SerialName(JsonTokenConstant.TYPE_KEEP_ALIVE_TOKEN)
     @Serializable
-    data class KeepAlive(val timestamp: Long = System.currentTimeMillis()) : WSMessage()
+    data class KeepAlive(val timestamp: Long = System.currentTimeMillis()) : Message()
 }

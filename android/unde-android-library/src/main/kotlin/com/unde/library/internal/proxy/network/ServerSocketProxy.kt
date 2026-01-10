@@ -8,7 +8,8 @@ import com.unde.library.internal.constants.DEFAULT_MAX_RECONNECT_ATTEMPTS
 import com.unde.library.internal.constants.DEFAULT_REAL_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_RECONNECT_DELAY_MS
 import com.unde.library.internal.constants.DEFAULT_SERVER_SOCKET_PORT
-import com.unde.library.internal.proxy.network.model.WSMessage
+import com.unde.library.internal.constants.JsonTokenConstant
+import com.unde.library.internal.proxy.network.model.Message
 import com.unde.library.internal.utils.DeviceManager
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.Socket
@@ -27,7 +28,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
@@ -38,37 +38,34 @@ internal object ServerSocketProxy {
 
     private val TAG: String = ServerSocketProxy.javaClass.simpleName
 
-    // Connection state
     private enum class ConnectionState {
         DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING
     }
 
     private val connectionState = AtomicReference(ConnectionState.DISCONNECTED)
 
-    // Coroutine scope and jobs
     private var internalServerScope: CoroutineScope? = null
     private var readJob: Job? = null
     private var writeJob: Job? = null
     private var keepAliveJob: Job? = null
     private var reconnectJob: Job? = null
 
-    // Socket and selector
     private var internalServerSelectorManager: SelectorManager? = null
     private var socket: Socket? = null
 
-    // Thread-safe message queue for offline messages
-    private val messageQueue = ConcurrentLinkedQueue<WSMessage>()
+    private val messageQueue = ConcurrentLinkedQueue<Message>()
 
-    // Keep-alive tracking
     @Volatile
     private var lastKeepAliveTime = 0L
 
-    // Reconnection tracking
     @Volatile
     private var reconnectAttempts = 0
 
     // JSON serializer
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        classDiscriminator = JsonTokenConstant.TYPE_TOKEN
+    }
 
     internal fun initialize() {
         Log.d(TAG, "Initialize $TAG")
@@ -81,8 +78,8 @@ internal object ServerSocketProxy {
         val scope = internalServerScope ?: return
         val selectorManager = internalServerSelectorManager ?: return
 
-        if (connectionState.get() == ConnectionState.CONNECTING || 
-            connectionState.get() == ConnectionState.CONNECTED) {
+        if (connectionState.get() == ConnectionState.CONNECTING
+            || connectionState.get() == ConnectionState.CONNECTED) {
             Log.d(TAG, "Already connecting or connected, skipping connect attempt")
             return
         }
@@ -122,59 +119,47 @@ internal object ServerSocketProxy {
     private fun startReadLoop() {
         val scope = internalServerScope ?: return
         val currentSocket = socket ?: return
-
         readJob?.cancel()
         readJob = scope.launch {
             try {
                 val receiveChannel = currentSocket.openReadChannel()
-                
                 while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
-                    ensureActive()
-                    
                     val line = receiveChannel.readUTF8Line()
-                    
+                    ensureActive()
                     if (line == null) {
                         Log.w(TAG, "Received null line, connection closed by server")
                         break
                     }
-                    
-                    if (line.isNotEmpty()) {
-                        handleIncomingMessage(line)
+                    if (line.isNotBlank()) {
+                        handleMessage(line)
                     }
                 }
-                
-                Log.w(TAG, "Read loop ended")
-                handleDisconnection()
-                
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.e(TAG, "Read loop error: ${e.message}", e)
+            } finally {
+                Log.w(TAG, "Read loop ended")
                 handleDisconnection()
             }
         }
     }
 
-    private fun handleIncomingMessage(line: String) {
-        try {
-            val message = json.decodeFromString<WSMessage>(line)
-            
-            when (message) {
-                is WSMessage.KeepAlive -> {
-                    lastKeepAliveTime = System.currentTimeMillis()
-                    Log.d(TAG, "Received keep-alive message")
-                }
-                else -> {
-                    Log.d(TAG, "Received message: ${message.javaClass.simpleName}")
-                }
+    private fun handleMessage(line: String) = try {
+        when (val message = json.decodeFromString<Message>(line)) {
+            is Message.KeepAlive -> {
+                lastKeepAliveTime = System.currentTimeMillis()
+                Log.d(TAG, "Received keep-alive message")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse incoming message: $line", e)
+            else -> {
+                Log.d(TAG, "Received message: ${message.javaClass.simpleName}")
+            }
         }
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to parse incoming message: $line", e)
     }
 
     private fun startKeepAlive() {
         val scope = internalServerScope ?: return
-
         keepAliveJob?.cancel()
         keepAliveJob = scope.launch {
             while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
@@ -189,10 +174,8 @@ internal object ServerSocketProxy {
                         handleDisconnection()
                         break
                     }
-
                     // Send keep-alive
-                    sendMessageInternal(WSMessage.KeepAlive())
-
+                    sendInternal(Message.KeepAlive())
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     Log.e(TAG, "Keep-alive error: ${e.message}", e)
@@ -201,7 +184,7 @@ internal object ServerSocketProxy {
         }
     }
 
-    private fun sendMessageInternal(message: WSMessage): Boolean {
+    private fun sendInternal(message: Message): Boolean {
         val currentSocket = socket ?: return false
         
         if (connectionState.get() != ConnectionState.CONNECTED) {
@@ -217,7 +200,7 @@ internal object ServerSocketProxy {
                     val encodedJson = json.encodeToString(message)
                     writeChannel.writeStringUtf8("$encodedJson\n")
                     
-                    if (message !is WSMessage.KeepAlive) {
+                    if (message !is Message.KeepAlive) {
                         Log.d(TAG, "Sent message[${message.javaClass.simpleName}]: $encodedJson")
                     }
                 } catch (e: Exception) {
@@ -233,13 +216,13 @@ internal object ServerSocketProxy {
         }
     }
 
-    internal fun send(wsMessage: WSMessage) {
+    internal fun send(message: Message) {
         if (connectionState.get() == ConnectionState.CONNECTED) {
-            sendMessageInternal(wsMessage)
+            sendInternal(message)
         } else {
             // Queue message for later
-            messageQueue.offer(wsMessage)
-            Log.d(TAG, "Message queued (connection not ready): ${wsMessage.javaClass.simpleName}")
+            messageQueue.offer(message)
+            Log.d(TAG, "Message queued (connection not ready): ${message.javaClass.simpleName}")
         }
     }
 
@@ -250,7 +233,7 @@ internal object ServerSocketProxy {
             var message = messageQueue.poll()
             while (message != null) {
                 if (connectionState.get() == ConnectionState.CONNECTED) {
-                    sendMessageInternal(message)
+                    sendInternal(message)
                     Log.d(TAG, "Sent queued message: ${message.javaClass.simpleName}")
                 } else {
                     // Put it back if we're not connected anymore
