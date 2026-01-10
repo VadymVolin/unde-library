@@ -2,6 +2,8 @@
 agp = "8.13.0"
 converterGson = "2.9.0"
 kotlin = "2.2.20"
+kotlinx-serialization-version = "1.9.0"
+ktor-version = "3.3.3"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
@@ -33,6 +35,11 @@ logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", ver
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 unde-android-library = { module = "io.github.vadymvolin:unde-android-library", version.ref = "undeAndroidLibrary" }
 
+ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor-version" }
+ktor-engine-client = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor-version" }
+ktor-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor-version" }
+ktor-json-serialization = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor-version" }
+kotlinx-json-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-version" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

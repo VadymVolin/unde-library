@@ -51,7 +51,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     api(libs.ktor.client)
     api(libs.ktor.engine.client)
-    api(libs.ktor.websockets)
+    api(libs.ktor.network)
     api(libs.ktor.json.serialization)
     api(libs.kotlinx.json.serialization)
 

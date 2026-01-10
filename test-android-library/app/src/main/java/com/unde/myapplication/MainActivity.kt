@@ -34,10 +34,13 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
 
+
 class MainActivity : ComponentActivity() {
+    private val TAG = "MainActivity"
+    val undeLibrary = UndeLibrary()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val undeLibrary = UndeLibrary()
+        Log.d(TAG, "onCreate: ")
         undeLibrary.initialize()
         lifecycleScope.launch {
             while (isActive) {
@@ -48,14 +51,14 @@ class MainActivity : ComponentActivity() {
                         override fun onResponse(call: Call<Post>, response: Response<Post>) {
                             if (response.isSuccessful) {
                                 val post = response.body()
-                                Log.d("MainActivity", "Get request: $post")
+                                Log.d(TAG, "Get request: $post")
                             } else {
-                                Log.e("MainActivity", "Error: ${response.code()}")
+                                Log.e(TAG, "Error: ${response.code()}")
                             }
                         }
 
                         override fun onFailure(call: Call<Post>, t: Throwable) {
-                            Log.e("MainActivity", "Failure: ${t.message}")
+                            Log.e(TAG, "Failure: ${t.message}")
                         }
                     })
                     val postCall = RetrofitClient.instance.sendPost()
@@ -63,14 +66,14 @@ class MainActivity : ComponentActivity() {
                         override fun onResponse(call: Call<Post>, response: Response<Post>) {
                             if (response.isSuccessful) {
                                 val post = response.body()
-                                Log.d("MainActivity", "Post request: $post")
+                                Log.d(TAG, "Post request: $post")
                             } else {
-                                Log.e("MainActivity", "Error: ${response.code()}")
+                                Log.e(TAG, "Error: ${response.code()}")
                             }
                         }
 
                         override fun onFailure(call: Call<Post>, t: Throwable) {
-                            Log.e("MainActivity", "Failure: ${t.message}")
+                            Log.e(TAG, "Failure: ${t.message}")
                         }
                     })
                 }
@@ -87,6 +90,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d(TAG, "onStart: ")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume: ")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d(TAG, "onStop: ")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "onDestroy: ")
     }
 }
 

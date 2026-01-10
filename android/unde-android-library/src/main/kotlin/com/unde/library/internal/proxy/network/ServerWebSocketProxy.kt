@@ -13,6 +13,7 @@ import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.http.HttpMethod
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,15 +22,14 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
-internal object ServerProxy {
+internal object ServerWebSocketProxy {
 
-    private val TAG: String = ServerProxy.javaClass.simpleName
+    private val TAG: String = ServerWebSocketProxy.javaClass.simpleName
 
     private val client by lazy { HttpClientWrapper.get() }
     private var internalServerScope: CoroutineScope? = null
@@ -53,17 +53,21 @@ internal object ServerProxy {
             }.onEach {
                 Log.d(TAG, "Message has been received: $it")
             }.catch {
-
-            }.flowOn(Dispatchers.IO).launchIn(scope)
+                Log.w(TAG, "Caught an exception: $it")
+            }.launchIn(scope)
         }
     }
 
     internal fun send(wsMessage: WSMessage) {
         internalServerScope?.launch {
             ensureActive()
-            val encodedJson = Json.encodeToString<WSMessage>(wsMessage)
-            wsSession?.send(Frame.Text(encodedJson))?.also {
-                Log.d(TAG, "Send message[${wsMessage.javaClass.simpleName}]: $encodedJson")
+            try {
+                val encodedJson = Json.encodeToString<WSMessage>(wsMessage)
+                wsSession?.send(Frame.Text(encodedJson))?.also {
+                    Log.d(TAG, "Send message[${wsMessage.javaClass.simpleName}]: $encodedJson")
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
             }
         } ?: Log.d(TAG, "Cannot send message, scope is canceled!")
     }
@@ -71,8 +75,12 @@ internal object ServerProxy {
     internal fun destroy() = internalServerScope?.launch {
         Log.d(TAG, "Destroy $TAG")
         ensureActive()
-        wsSession?.close()
-        wsSession = null
+        try {
+            wsSession?.close()
+            wsSession = null
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+        }
         cancel()
     } ?: Log.d(TAG, "Cannot close ws session, scope is canceled or null!")
 }

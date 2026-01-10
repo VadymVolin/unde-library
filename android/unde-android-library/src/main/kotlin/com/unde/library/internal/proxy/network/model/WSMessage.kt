@@ -27,4 +27,8 @@ internal sealed class WSMessage {
     @SerialName(JsonTokenConstant.TYPE_LOGCAT_TOKEN)
     @Serializable
     data class Logcat(val data: JsonObject) : WSMessage()
+
+    @SerialName(JsonTokenConstant.TYPE_KEEP_ALIVE_TOKEN)
+    @Serializable
+    data class KeepAlive(val timestamp: Long = System.currentTimeMillis()) : WSMessage()
 }
