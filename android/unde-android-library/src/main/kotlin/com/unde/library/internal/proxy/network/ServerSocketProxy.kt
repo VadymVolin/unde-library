@@ -74,12 +74,59 @@ internal object ServerSocketProxy {
         connect()
     }
 
+    internal fun send(message: Message) {
+        if (connectionState.get() == ConnectionState.CONNECTED) {
+            sendInternal(message)
+        } else {
+            // Queue message for later
+            messageQueue.offer(message)
+            Log.d(TAG, "Message queued (connection not ready): ${message.javaClass.simpleName}")
+        }
+    }
+
+    internal fun destroy() {
+        Log.d(TAG, "Destroy $TAG")
+
+        connectionState.set(ConnectionState.DISCONNECTED)
+
+        // Cancel all jobs
+        readJob?.cancel()
+        writeJob?.cancel()
+        keepAliveJob?.cancel()
+        reconnectJob?.cancel()
+
+        // Close socket
+        try {
+            socket?.close()
+            socket = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error closing socket: ${e.message}", e)
+        }
+
+        // Cancel scope
+        internalServerScope?.cancel()
+        internalServerScope = null
+
+        // Close selector manager
+        internalServerSelectorManager?.close()
+        internalServerSelectorManager = null
+
+        // Clear message queue
+        messageQueue.clear()
+
+        Log.d(TAG, "$TAG destroyed")
+    }
+
     private fun connect() {
         val scope = internalServerScope ?: return
         val selectorManager = internalServerSelectorManager ?: return
 
-        if (connectionState.get() == ConnectionState.CONNECTING
-            || connectionState.get() == ConnectionState.CONNECTED) {
+        readJob?.cancel()
+        writeJob?.cancel()
+        keepAliveJob?.cancel()
+        reconnectJob?.cancel()
+
+        if (connectionState.get() == ConnectionState.CONNECTING || connectionState.get() == ConnectionState.CONNECTED) {
             Log.d(TAG, "Already connecting or connected, skipping connect attempt")
             return
         }
@@ -92,7 +139,10 @@ internal object ServerSocketProxy {
                 val host = if (DeviceManager.isEmulator()) DEFAULT_EMULATOR_SERVER_HOST else DEFAULT_REAL_SERVER_HOST
                 Log.d(TAG, "Connecting to $host:$DEFAULT_SERVER_SOCKET_PORT")
 
-                socket = aSocket(selectorManager).tcp().connect(host, DEFAULT_SERVER_SOCKET_PORT)
+                socket = aSocket(selectorManager).tcp().connect(
+                    host,
+                    DEFAULT_SERVER_SOCKET_PORT
+                )
                 
                 connectionState.set(ConnectionState.CONNECTED)
                 reconnectAttempts = 0
@@ -184,64 +234,42 @@ internal object ServerSocketProxy {
         }
     }
 
-    private fun sendInternal(message: Message): Boolean {
-        val currentSocket = socket ?: return false
+    private fun sendInternal(message: Message) {
+        val scope = internalServerScope ?: return
+        val currentSocket = socket ?: return
         
         if (connectionState.get() != ConnectionState.CONNECTED) {
-            return false
+            return
         }
 
-        return try {
-            val scope = internalServerScope ?: return false
-            
-            scope.launch {
-                try {
-                    val writeChannel = currentSocket.openWriteChannel(autoFlush = true)
-                    val encodedJson = json.encodeToString(message)
-                    writeChannel.writeStringUtf8("$encodedJson\n")
-                    
-                    if (message !is Message.KeepAlive) {
-                        Log.d(TAG, "Sent message[${message.javaClass.simpleName}]: $encodedJson")
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Log.e(TAG, "Failed to send message: ${e.message}", e)
-                    handleDisconnection()
-                }
-            }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to send message: ${e.message}", e)
-            false
-        }
-    }
-
-    internal fun send(message: Message) {
-        if (connectionState.get() == ConnectionState.CONNECTED) {
-            sendInternal(message)
-        } else {
-            // Queue message for later
-            messageQueue.offer(message)
-            Log.d(TAG, "Message queued (connection not ready): ${message.javaClass.simpleName}")
-        }
-    }
-
-    private fun flushMessageQueue() {
-        val scope = internalServerScope ?: return
-        
         scope.launch {
-            var message = messageQueue.poll()
-            while (message != null) {
-                if (connectionState.get() == ConnectionState.CONNECTED) {
-                    sendInternal(message)
-                    Log.d(TAG, "Sent queued message: ${message.javaClass.simpleName}")
-                } else {
-                    // Put it back if we're not connected anymore
-                    messageQueue.offer(message)
-                    break
+            try {
+                val writeChannel = currentSocket.openWriteChannel(autoFlush = true)
+                val encodedJson = json.encodeToString(message)
+                writeChannel.writeStringUtf8("$encodedJson\n")
+                if (message !is Message.KeepAlive) {
+                    Log.d(TAG, "Sent message[${message.javaClass.simpleName}]: $encodedJson")
                 }
-                message = messageQueue.poll()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.e(TAG, "Failed to send message: ${e.message}", e)
+                handleDisconnection()
             }
+        }
+    }
+
+    private fun flushMessageQueue() = internalServerScope?.launch {
+        var message = messageQueue.poll()
+        while (message != null) {
+            if (connectionState.get() == ConnectionState.CONNECTED) {
+                sendInternal(message)
+                Log.d(TAG, "Sent queued message: ${message.javaClass.simpleName}")
+            } else {
+                // Put it back if we're not connected anymore
+                messageQueue.offer(message)
+                break
+            }
+            message = messageQueue.poll()
         }
     }
 
@@ -298,38 +326,5 @@ internal object ServerSocketProxy {
                 Log.d(TAG, "Reconnect cancelled")
             }
         }
-    }
-
-    internal fun destroy() {
-        Log.d(TAG, "Destroy $TAG")
-        
-        connectionState.set(ConnectionState.DISCONNECTED)
-        
-        // Cancel all jobs
-        readJob?.cancel()
-        writeJob?.cancel()
-        keepAliveJob?.cancel()
-        reconnectJob?.cancel()
-        
-        // Close socket
-        try {
-            socket?.close()
-            socket = null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error closing socket: ${e.message}", e)
-        }
-        
-        // Cancel scope
-        internalServerScope?.cancel()
-        internalServerScope = null
-        
-        // Close selector manager
-        internalServerSelectorManager?.close()
-        internalServerSelectorManager = null
-        
-        // Clear message queue
-        messageQueue.clear()
-        
-        Log.d(TAG, "$TAG destroyed")
     }
 }
