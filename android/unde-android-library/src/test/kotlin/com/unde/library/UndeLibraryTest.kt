@@ -34,8 +34,8 @@ class UndeLibraryTest {
                 // The pingInterval and pingIntervalMillis properties are not applicable for the OkHttp engine
                 //  https://ktor.io/docs/client-websockets.html#configure_plugin
                 preconfigured = OkHttpClient.Builder()
-                    .pingInterval(Duration.ofSeconds(DEFAULT_PING_INTERVAL_SEC))
-                    .connectTimeout(Duration.ofSeconds(DEFAULT_CONNECTION_TIMEOUT_SEC))
+                    .pingInterval(DEFAULT_PING_INTERVAL_SEC)
+                    .connectTimeout(DEFAULT_CONNECTION_TIMEOUT_SEC)
                     .addNetworkInterceptor(UndeHttpInterceptor())
                     .build()
             }

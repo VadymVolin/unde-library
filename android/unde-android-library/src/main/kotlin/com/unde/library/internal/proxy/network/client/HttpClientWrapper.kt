@@ -11,8 +11,8 @@ internal object HttpClientWrapper {
     private val httpClient = HttpClient(OkHttp) {
         engine {
             preconfigured = OkHttpClient.Builder()
-                .pingInterval(DEFAULT_PING_INTERVAL_SEC.seconds)
-                .connectTimeout(DEFAULT_CONNECTION_TIMEOUT_SEC.seconds)
+                .pingInterval(DEFAULT_PING_INTERVAL_SEC)
+                .connectTimeout(DEFAULT_CONNECTION_TIMEOUT_SEC)
                 .build()
         }
     }

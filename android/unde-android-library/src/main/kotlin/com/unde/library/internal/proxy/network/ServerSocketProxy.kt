@@ -4,7 +4,6 @@ import android.util.Log
 import com.unde.library.internal.constants.DEFAULT_EMULATOR_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_KEEP_ALIVE_INTERVAL_MS
 import com.unde.library.internal.constants.DEFAULT_KEEP_ALIVE_TIMEOUT_MS
-import com.unde.library.internal.constants.DEFAULT_MAX_RECONNECT_ATTEMPTS
 import com.unde.library.internal.constants.DEFAULT_REAL_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_RECONNECT_DELAY_MS
 import com.unde.library.internal.constants.DEFAULT_SERVER_SOCKET_PORT
@@ -29,10 +28,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.min
-import kotlin.math.pow
 
 internal object ServerSocketProxy {
 
@@ -48,20 +44,16 @@ internal object ServerSocketProxy {
     private var readJob: Job? = null
     private var writeJob: Job? = null
     private var keepAliveJob: Job? = null
-    private var reconnectJob: Job? = null
+    private var connectJob: Job? = null
 
     private var internalServerSelectorManager: SelectorManager? = null
     private var socket: Socket? = null
 
-    private val messageQueue = ConcurrentLinkedQueue<Message>()
+    private val messageQueue = ArrayDeque<Message>()
 
     @Volatile
     private var lastKeepAliveTime = 0L
 
-    @Volatile
-    private var reconnectAttempts = 0
-
-    // JSON serializer
     private val json = Json {
         ignoreUnknownKeys = true
         classDiscriminator = JsonTokenConstant.TYPE_TOKEN
@@ -76,26 +68,22 @@ internal object ServerSocketProxy {
 
     internal fun send(message: Message) {
         if (connectionState.get() == ConnectionState.CONNECTED) {
+            Log.d(TAG, "Sending: ${message.javaClass.simpleName}")
             sendInternal(message)
         } else {
-            // Queue message for later
-            messageQueue.offer(message)
-            Log.d(TAG, "Message queued (connection not ready): ${message.javaClass.simpleName}")
+            messageQueue.add(message)
+            Log.d(TAG, "Message queued (not connected): ${message.javaClass.simpleName}")
         }
     }
 
     internal fun destroy() {
         Log.d(TAG, "Destroy $TAG")
-
         connectionState.set(ConnectionState.DISCONNECTED)
-
-        // Cancel all jobs
         readJob?.cancel()
         writeJob?.cancel()
         keepAliveJob?.cancel()
-        reconnectJob?.cancel()
+        connectJob?.cancel()
 
-        // Close socket
         try {
             socket?.close()
             socket = null
@@ -103,28 +91,25 @@ internal object ServerSocketProxy {
             Log.e(TAG, "Error closing socket: ${e.message}", e)
         }
 
-        // Cancel scope
         internalServerScope?.cancel()
         internalServerScope = null
 
-        // Close selector manager
         internalServerSelectorManager?.close()
         internalServerSelectorManager = null
 
-        // Clear message queue
         messageQueue.clear()
 
         Log.d(TAG, "$TAG destroyed")
     }
 
-    private fun connect() {
+    private fun connect(reconnectDelay: Long? = null) {
         val scope = internalServerScope ?: return
         val selectorManager = internalServerSelectorManager ?: return
 
         readJob?.cancel()
         writeJob?.cancel()
         keepAliveJob?.cancel()
-        reconnectJob?.cancel()
+        connectJob?.cancel()
 
         if (connectionState.get() == ConnectionState.CONNECTING || connectionState.get() == ConnectionState.CONNECTED) {
             Log.d(TAG, "Already connecting or connected, skipping connect attempt")
@@ -134,7 +119,8 @@ internal object ServerSocketProxy {
         connectionState.set(ConnectionState.CONNECTING)
         Log.d(TAG, "Attempting to connect...")
 
-        scope.launch {
+        connectJob = scope.launch {
+            reconnectDelay?.let { delay(it) }
             try {
                 val host = if (DeviceManager.isEmulator()) DEFAULT_EMULATOR_SERVER_HOST else DEFAULT_REAL_SERVER_HOST
                 Log.d(TAG, "Connecting to $host:$DEFAULT_SERVER_SOCKET_PORT")
@@ -145,18 +131,11 @@ internal object ServerSocketProxy {
                 )
                 
                 connectionState.set(ConnectionState.CONNECTED)
-                reconnectAttempts = 0
                 lastKeepAliveTime = System.currentTimeMillis()
-                
                 Log.d(TAG, "Connection established: $host:$DEFAULT_SERVER_SOCKET_PORT")
-
-                // Start reading and writing
                 startReadLoop()
                 startKeepAlive()
-                
-                // Send queued messages
-                flushMessageQueue()
-
+                sendAllFromMessageQueue()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.e(TAG, "Connection failed: ${e.message}", e)
@@ -217,14 +196,12 @@ internal object ServerSocketProxy {
                     delay(DEFAULT_KEEP_ALIVE_INTERVAL_MS)
                     ensureActive()
 
-                    // Check if we received a keep-alive recently
                     val timeSinceLastKeepAlive = System.currentTimeMillis() - lastKeepAliveTime
                     if (timeSinceLastKeepAlive > DEFAULT_KEEP_ALIVE_TIMEOUT_MS) {
                         Log.w(TAG, "Keep-alive timeout (${timeSinceLastKeepAlive}ms), connection lost")
                         handleDisconnection()
                         break
                     }
-                    // Send keep-alive
                     sendInternal(Message.KeepAlive())
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
@@ -258,34 +235,29 @@ internal object ServerSocketProxy {
         }
     }
 
-    private fun flushMessageQueue() = internalServerScope?.launch {
-        var message = messageQueue.poll()
-        while (message != null) {
+    private fun sendAllFromMessageQueue() = internalServerScope?.launch {
+        while (messageQueue.isNotEmpty() && connectionState.get() == ConnectionState.CONNECTED) {
+            val message = messageQueue.firstOrNull() ?: break
+            sendInternal(message)
             if (connectionState.get() == ConnectionState.CONNECTED) {
-                sendInternal(message)
-                Log.d(TAG, "Sent queued message: ${message.javaClass.simpleName}")
-            } else {
-                // Put it back if we're not connected anymore
-                messageQueue.offer(message)
-                break
+                messageQueue.removeFirst()
             }
-            message = messageQueue.poll()
+            Log.d(TAG, "sendAllFromMessageQueue: Sent queued message: ${message.javaClass.simpleName}")
         }
     }
 
     private fun handleDisconnection() {
         if (connectionState.get() == ConnectionState.DISCONNECTED) {
-            return // Already handling disconnection
+            return
         }
 
         Log.d(TAG, "Handling disconnection")
         connectionState.set(ConnectionState.DISCONNECTED)
         
-        // Cancel jobs
         readJob?.cancel()
+        writeJob?.cancel()
         keepAliveJob?.cancel()
         
-        // Close socket
         try {
             socket?.close()
             socket = null
@@ -293,38 +265,12 @@ internal object ServerSocketProxy {
             Log.e(TAG, "Error closing socket: ${e.message}", e)
         }
 
-        // Schedule reconnection
         scheduleReconnect()
     }
 
     private fun scheduleReconnect() {
-        val scope = internalServerScope ?: return
-
-        if (DEFAULT_MAX_RECONNECT_ATTEMPTS != -1 && reconnectAttempts >= DEFAULT_MAX_RECONNECT_ATTEMPTS) {
-            Log.w(TAG, "Max reconnect attempts reached ($DEFAULT_MAX_RECONNECT_ATTEMPTS)")
-            return
-        }
-
         connectionState.set(ConnectionState.RECONNECTING)
-        reconnectAttempts++
-
-        // Exponential backoff: 2s, 4s, 8s, 16s, max 60s
-        val backoffDelay = min(
-            DEFAULT_RECONNECT_DELAY_MS * (2.0.pow((reconnectAttempts - 1).toDouble())).toLong(),
-            60000L
-        )
-
-        Log.d(TAG, "Scheduling reconnect attempt #$reconnectAttempts in ${backoffDelay}ms")
-
-        reconnectJob?.cancel()
-        reconnectJob = scope.launch {
-            try {
-                delay(backoffDelay)
-                ensureActive()
-                connect()
-            } catch (e: CancellationException) {
-                Log.d(TAG, "Reconnect cancelled")
-            }
-        }
+        Log.d(TAG, "Scheduling reconnect attempt in ${DEFAULT_RECONNECT_DELAY_MS}ms")
+        connect(DEFAULT_RECONNECT_DELAY_MS)
     }
 }
