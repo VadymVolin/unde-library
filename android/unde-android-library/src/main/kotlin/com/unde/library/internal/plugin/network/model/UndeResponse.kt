@@ -5,6 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class UndeResponse(
+    @SerialName("responseTime")
+    val responseTime: Long,
     @SerialName("code")
     val code: Int,
     @SerialName("message")

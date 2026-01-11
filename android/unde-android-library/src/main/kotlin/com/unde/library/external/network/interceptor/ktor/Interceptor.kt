@@ -11,10 +11,11 @@ import io.ktor.client.request.HttpRequestBuilder
 class UndeHttpInterceptor : suspend (Sender, HttpRequestBuilder) -> HttpClientCall {
 
     override suspend fun invoke(sender: Sender, requestBuilder: HttpRequestBuilder): HttpClientCall {
+
         return sender.execute(requestBuilder).also {
             val request = it.request
             val response = it.response
-            UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(), response.toUndeResponse()))
+            UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(response.requestTime.timestamp), response.toUndeResponse()))
         }
     }
 

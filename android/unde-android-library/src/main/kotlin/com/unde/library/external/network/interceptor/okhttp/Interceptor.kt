@@ -11,7 +11,7 @@ class UndeHttpInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val response = chain.proceed(request)
-        UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(), response.toUndeResponse()))
+        UndeNetworkPlugin.handleRequest(UndeRequestResponse(request.toUndeRequest(response.sentRequestAtMillis), response.toUndeResponse()))
         return response
     }
 }

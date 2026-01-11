@@ -11,7 +11,8 @@ import java.util.zip.GZIPInputStream
 
 private const val DEFAULT_MAX_BODY_SIZE = 5 * 1024 * 1024L // 5MB
 
-internal fun io.ktor.client.request.HttpRequest.toUndeRequest() = UndeRequest(
+internal fun io.ktor.client.request.HttpRequest.toUndeRequest(sentRequestAtMillis: Long) = UndeRequest(
+    sentRequestAtMillis,
     this.url.toString(),
     this.method.value,
     this.headers.toMap(),
@@ -19,6 +20,7 @@ internal fun io.ktor.client.request.HttpRequest.toUndeRequest() = UndeRequest(
 )
 
 internal suspend fun io.ktor.client.statement.HttpResponse.toUndeResponse() = UndeResponse(
+    this.responseTime.timestamp,
     this.status.value,
     this.status.description,
     this.headers.toMap(),
@@ -26,7 +28,8 @@ internal suspend fun io.ktor.client.statement.HttpResponse.toUndeResponse() = Un
     this.bodyAsText()
 )
 
-internal fun okhttp3.Request.toUndeRequest() = UndeRequest(
+internal fun okhttp3.Request.toUndeRequest(sentRequestAtMillis: Long) = UndeRequest(
+    sentRequestAtMillis,
     this.url.toString(),
     this.method,
     this.headers.toMultimap(),
@@ -34,6 +37,7 @@ internal fun okhttp3.Request.toUndeRequest() = UndeRequest(
 )
 
 internal fun okhttp3.Response.toUndeResponse() = UndeResponse(
+    this.receivedResponseAtMillis,
     this.code,
     this.message,
     this.headers.toMultimap(),
@@ -63,7 +67,7 @@ private fun okhttp3.Response.readOkHttpResponseBody(): String {
     val data = if (isGzip) {
         try {
             GZIPInputStream(peeked.byteStream()).use { it.readBytes() }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return peeked.string()
         }
     } else {

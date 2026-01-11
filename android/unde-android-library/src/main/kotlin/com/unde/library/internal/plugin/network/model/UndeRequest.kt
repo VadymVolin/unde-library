@@ -5,6 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class UndeRequest(
+    @SerialName("requestTime")
+    val requestTime: Long,
     @SerialName("url")
     val url: String,
     @SerialName("method")
