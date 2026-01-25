@@ -2,8 +2,6 @@ package com.unde.library.internal.proxy.network
 
 import android.util.Log
 import com.unde.library.internal.constants.DEFAULT_EMULATOR_SERVER_HOST
-import com.unde.library.internal.constants.DEFAULT_KEEP_ALIVE_INTERVAL_MS
-import com.unde.library.internal.constants.DEFAULT_KEEP_ALIVE_TIMEOUT_MS
 import com.unde.library.internal.constants.DEFAULT_REAL_SERVER_HOST
 import com.unde.library.internal.constants.DEFAULT_RECONNECT_DELAY_MS
 import com.unde.library.internal.constants.DEFAULT_SERVER_SOCKET_PORT
@@ -13,6 +11,8 @@ import com.unde.library.internal.utils.DeviceManager
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.network.sockets.openReadChannel
 import io.ktor.network.sockets.openWriteChannel
 import io.ktor.utils.io.readUTF8Line
@@ -43,16 +43,15 @@ internal object ServerSocketProxy {
     private var internalServerScope: CoroutineScope? = null
     private var readJob: Job? = null
     private var writeJob: Job? = null
-    private var keepAliveJob: Job? = null
     private var connectJob: Job? = null
 
     private var internalServerSelectorManager: SelectorManager? = null
     private var socket: Socket? = null
+    // todo: check why we cannot send network message and read data
+    private var readChannel: ByteReadChannel? = null
+    private var writeChannel: ByteWriteChannel? = null
 
     private val messageQueue = ArrayDeque<Message>()
-
-    @Volatile
-    private var lastKeepAliveTime = 0L
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -81,12 +80,13 @@ internal object ServerSocketProxy {
         connectionState.set(ConnectionState.DISCONNECTED)
         readJob?.cancel()
         writeJob?.cancel()
-        keepAliveJob?.cancel()
         connectJob?.cancel()
 
         try {
             socket?.close()
             socket = null
+            readChannel = null
+            writeChannel = null
         } catch (e: Exception) {
             Log.e(TAG, "Error closing socket: ${e.message}", e)
         }
@@ -108,7 +108,6 @@ internal object ServerSocketProxy {
 
         readJob?.cancel()
         writeJob?.cancel()
-        keepAliveJob?.cancel()
         connectJob?.cancel()
 
         if (connectionState.get() == ConnectionState.CONNECTING || connectionState.get() == ConnectionState.CONNECTED) {
@@ -129,12 +128,12 @@ internal object ServerSocketProxy {
                     host,
                     DEFAULT_SERVER_SOCKET_PORT
                 )
-                
+
                 connectionState.set(ConnectionState.CONNECTED)
-                lastKeepAliveTime = System.currentTimeMillis()
                 Log.d(TAG, "Connection established: $host:$DEFAULT_SERVER_SOCKET_PORT")
+                readChannel = socket?.openReadChannel()
+                writeChannel = socket?.openWriteChannel()
                 startReadLoop()
-                startKeepAlive()
                 sendAllFromMessageQueue()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -151,9 +150,8 @@ internal object ServerSocketProxy {
         readJob?.cancel()
         readJob = scope.launch {
             try {
-                val receiveChannel = currentSocket.openReadChannel()
                 while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
-                    val line = receiveChannel.readUTF8Line()
+                    val line = readChannel?.readUTF8Line()
                     ensureActive()
                     if (line == null) {
                         Log.w(TAG, "Received null line, connection closed by server")
@@ -175,58 +173,28 @@ internal object ServerSocketProxy {
 
     private fun handleMessage(line: String) = try {
         when (val message = json.decodeFromString<Message>(line)) {
-            is Message.KeepAlive -> {
-                lastKeepAliveTime = System.currentTimeMillis()
-                Log.d(TAG, "Received keep-alive message")
-            }
             else -> {
-                Log.d(TAG, "Received message: ${message.javaClass.simpleName}")
+                Log.d(TAG, "Received message: ${message.javaClass.simpleName} - $Message")
             }
         }
     } catch (e: Exception) {
         Log.e(TAG, "Failed to parse incoming message: $line", e)
     }
 
-    private fun startKeepAlive() {
-        val scope = internalServerScope ?: return
-        keepAliveJob?.cancel()
-        keepAliveJob = scope.launch {
-            while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
-                try {
-                    delay(DEFAULT_KEEP_ALIVE_INTERVAL_MS)
-                    ensureActive()
-
-                    val timeSinceLastKeepAlive = System.currentTimeMillis() - lastKeepAliveTime
-                    if (timeSinceLastKeepAlive > DEFAULT_KEEP_ALIVE_TIMEOUT_MS) {
-                        Log.w(TAG, "Keep-alive timeout (${timeSinceLastKeepAlive}ms), connection lost")
-                        handleDisconnection()
-                        break
-                    }
-                    sendInternal(Message.KeepAlive())
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Log.e(TAG, "Keep-alive error: ${e.message}", e)
-                }
-            }
-        }
-    }
-
     private fun sendInternal(message: Message) {
         val scope = internalServerScope ?: return
         val currentSocket = socket ?: return
-        
+
         if (connectionState.get() != ConnectionState.CONNECTED) {
             return
         }
 
         scope.launch {
             try {
-                val writeChannel = currentSocket.openWriteChannel(autoFlush = true)
-                val encodedJson = json.encodeToString(message)
-                writeChannel.writeStringUtf8("$encodedJson\n")
-                if (message !is Message.KeepAlive) {
-                    Log.d(TAG, "Sent message[${message.javaClass.simpleName}]: $encodedJson")
-                }
+                val encodedJsonString = json.encodeToString(message)
+                val finalEncodedMessage = "${encodedJsonString.length}\n$encodedJsonString"
+                writeChannel?.writeStringUtf8(finalEncodedMessage)
+                Log.d(TAG, "Sent message[${message.javaClass.simpleName}]: $finalEncodedMessage")
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.e(TAG, "Failed to send message: ${e.message}", e)
@@ -253,14 +221,15 @@ internal object ServerSocketProxy {
 
         Log.d(TAG, "Handling disconnection")
         connectionState.set(ConnectionState.DISCONNECTED)
-        
+
         readJob?.cancel()
         writeJob?.cancel()
-        keepAliveJob?.cancel()
-        
+
         try {
             socket?.close()
             socket = null
+            readChannel = null
+            writeChannel = null
         } catch (e: Exception) {
             Log.e(TAG, "Error closing socket: ${e.message}", e)
         }

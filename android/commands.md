@@ -11,11 +11,11 @@
 ## Build debug version:
 
 ```shell
-./gradlew :unde-android-library:assembleDebug
+./gradlew clean assembleDebug
 ```
 
 ## Build release version:
 
 ```shell
-./gradlew :unde-android-library:assembleRelease
+./gradlew clean :unde-android-library:assembleRelease
 ```

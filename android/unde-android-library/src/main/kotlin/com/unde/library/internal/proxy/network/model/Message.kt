@@ -7,28 +7,29 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
-internal sealed class Message {
+internal sealed interface Message {
+
+    @Serializable
+    @SerialName(JsonTokenConstant.TYPE_RESULT_TOKEN)
+    data class Result(val data: String) : Message
+
     @SerialName(JsonTokenConstant.TYPE_COMMAND_TOKEN)
     @Serializable
-    data class Command(val data: JsonObject) : Message()
+    data class Command(val data: JsonObject) : Message
 
     @SerialName(JsonTokenConstant.TYPE_NETWORK_TOKEN)
     @Serializable
-    data class Network(val data: UndeRequestResponse) : Message()
+    data class Network(val data: UndeRequestResponse) : Message
 
     @SerialName(JsonTokenConstant.TYPE_DATABASE_TOKEN)
     @Serializable
-    data class Database(val data: JsonObject) : Message()
+    data class Database(val data: JsonObject) : Message
 
     @SerialName(JsonTokenConstant.TYPE_TELEMETRY_TOKEN)
     @Serializable
-    data class Telemetry(val data: JsonObject) : Message()
+    data class Telemetry(val data: JsonObject) : Message
 
     @SerialName(JsonTokenConstant.TYPE_LOGCAT_TOKEN)
     @Serializable
-    data class Logcat(val data: JsonObject) : Message()
-
-    @SerialName(JsonTokenConstant.TYPE_KEEP_ALIVE_TOKEN)
-    @Serializable
-    data class KeepAlive(val timestamp: Long = System.currentTimeMillis()) : Message()
+    data class Logcat(val data: JsonObject) : Message
 }
