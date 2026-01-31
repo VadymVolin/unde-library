@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal object ServerSocketProxy {
 
-    private val TAG: String = ServerSocketProxy.javaClass.simpleName
+    private val TAG: String = ServerSocketProxy.javaClass.canonicalName ?: ServerSocketProxy.javaClass.simpleName
 
     private enum class ConnectionState {
         DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING
@@ -47,7 +47,6 @@ internal object ServerSocketProxy {
 
     private var internalServerSelectorManager: SelectorManager? = null
     private var socket: Socket? = null
-    // todo: check why we cannot send network message and read data
     private var readChannel: ByteReadChannel? = null
     private var writeChannel: ByteWriteChannel? = null
 
@@ -59,13 +58,15 @@ internal object ServerSocketProxy {
     }
 
     internal fun initialize() {
-        Log.d(TAG, "Initialize $TAG")
+        Log.d(TAG, "Initialize $TAG, enter")
         internalServerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         internalServerSelectorManager = SelectorManager(Dispatchers.IO)
         connect()
+        Log.d(TAG, "Initialize $TAG, leave")
     }
 
     internal fun send(message: Message) {
+        Log.d(TAG, "Send [${message.javaClass.simpleName}], enter")
         if (connectionState.get() == ConnectionState.CONNECTED) {
             Log.d(TAG, "Sending: ${message.javaClass.simpleName}")
             sendInternal(message)
@@ -73,10 +74,11 @@ internal object ServerSocketProxy {
             messageQueue.add(message)
             Log.d(TAG, "Message queued (not connected): ${message.javaClass.simpleName}")
         }
+        Log.d(TAG, "Send [${message.javaClass.simpleName}], leave")
     }
 
     internal fun destroy() {
-        Log.d(TAG, "Destroy $TAG")
+        Log.d(TAG, "Destroy, enter")
         connectionState.set(ConnectionState.DISCONNECTED)
         readJob?.cancel()
         writeJob?.cancel()
@@ -99,10 +101,11 @@ internal object ServerSocketProxy {
 
         messageQueue.clear()
 
-        Log.d(TAG, "$TAG destroyed")
+        Log.d(TAG, "Destroy, leave")
     }
 
     private fun connect(reconnectDelay: Long? = null) {
+        Log.d(TAG, "Connect (reconnect delay[$reconnectDelay]), enter")
         val scope = internalServerScope ?: return
         val selectorManager = internalServerSelectorManager ?: return
 
@@ -132,7 +135,7 @@ internal object ServerSocketProxy {
                 connectionState.set(ConnectionState.CONNECTED)
                 Log.d(TAG, "Connection established: $host:$DEFAULT_SERVER_SOCKET_PORT")
                 readChannel = socket?.openReadChannel()
-                writeChannel = socket?.openWriteChannel()
+                writeChannel = socket?.openWriteChannel(autoFlush = true)
                 startReadLoop()
                 sendAllFromMessageQueue()
             } catch (e: Exception) {
@@ -141,12 +144,13 @@ internal object ServerSocketProxy {
                 connectionState.set(ConnectionState.DISCONNECTED)
                 scheduleReconnect()
             }
+            Log.d(TAG, "Connect (reconnect delay[$reconnectDelay]), leave")
         }
     }
 
     private fun startReadLoop() {
+        Log.d(TAG, "startReadLoop scope[${internalServerScope != null}], readChannel[${readChannel != null}], connectionState[${connectionState.get()}], enter")
         val scope = internalServerScope ?: return
-        val currentSocket = socket ?: return
         readJob?.cancel()
         readJob = scope.launch {
             try {
@@ -169,30 +173,35 @@ internal object ServerSocketProxy {
                 handleDisconnection()
             }
         }
+        Log.d(TAG, "startReadLoop, leave")
     }
 
     private fun handleMessage(line: String) = try {
+        Log.d(TAG, "handleMessage, enter")
         when (val message = json.decodeFromString<Message>(line)) {
             else -> {
                 Log.d(TAG, "Received message: ${message.javaClass.simpleName} - $Message")
             }
         }
+        Log.d(TAG, "handleMessage, leave")
     } catch (e: Exception) {
         Log.e(TAG, "Failed to parse incoming message: $line", e)
+        Log.d(TAG, "handleMessage, leave")
     }
 
     private fun sendInternal(message: Message) {
+        Log.d(TAG, "sendInternal [${message.javaClass.simpleName}] writeChannel[${writeChannel != null}], enter")
         val scope = internalServerScope ?: return
-        val currentSocket = socket ?: return
 
         if (connectionState.get() != ConnectionState.CONNECTED) {
+            Log.d(TAG, "sendInternal, client is not connected, current state is ${connectionState.get()}")
             return
         }
 
         scope.launch {
             try {
                 val encodedJsonString = json.encodeToString(message)
-                val finalEncodedMessage = "${encodedJsonString.length}\n$encodedJsonString"
+                val finalEncodedMessage = "${encodedJsonString.length}\n${encodedJsonString}"
                 writeChannel?.writeStringUtf8(finalEncodedMessage)
                 Log.d(TAG, "Sent message[${message.javaClass.simpleName}]: $finalEncodedMessage")
             } catch (e: Exception) {
@@ -200,10 +209,12 @@ internal object ServerSocketProxy {
                 Log.e(TAG, "Failed to send message: ${e.message}", e)
                 handleDisconnection()
             }
+            Log.d(TAG, "sendInternal [${message.javaClass.simpleName}], leave")
         }
     }
 
-    private fun sendAllFromMessageQueue() = internalServerScope?.launch {
+    private fun sendAllFromMessageQueue() {
+        Log.d(TAG, "sendAllFromMessageQueue messageQueue[${messageQueue.size}], connectionState[${connectionState.get()}], enter")
         while (messageQueue.isNotEmpty() && connectionState.get() == ConnectionState.CONNECTED) {
             val message = messageQueue.firstOrNull() ?: break
             sendInternal(message)
@@ -212,9 +223,11 @@ internal object ServerSocketProxy {
             }
             Log.d(TAG, "sendAllFromMessageQueue: Sent queued message: ${message.javaClass.simpleName}")
         }
+        Log.d(TAG, "sendAllFromMessageQueue, leave")
     }
 
     private fun handleDisconnection() {
+        Log.d(TAG, "handleDisconnection, enter")
         if (connectionState.get() == ConnectionState.DISCONNECTED) {
             return
         }
@@ -235,11 +248,14 @@ internal object ServerSocketProxy {
         }
 
         scheduleReconnect()
+        Log.d(TAG, "handleDisconnection, leave")
     }
 
     private fun scheduleReconnect() {
+        Log.d(TAG, "scheduleReconnect, enter")
         connectionState.set(ConnectionState.RECONNECTING)
         Log.d(TAG, "Scheduling reconnect attempt in ${DEFAULT_RECONNECT_DELAY_MS}ms")
         connect(DEFAULT_RECONNECT_DELAY_MS)
+        Log.d(TAG, "scheduleReconnect, leave")
     }
 }

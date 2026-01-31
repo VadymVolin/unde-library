@@ -2,6 +2,7 @@ package com.unde.library.internal.proxy.cache
 
 import android.util.Log
 import com.unde.library.internal.plugin.network.model.UndeRequestResponse
+import com.unde.library.internal.proxy.network.ServerSocketProxy
 import kotlinx.io.IOException
 import java.io.File
 import java.io.FileOutputStream
@@ -10,7 +11,7 @@ import java.util.zip.GZIPOutputStream
 
 internal object CacheProxy {
 
-    private val TAG: String = CacheProxy.javaClass.simpleName
+    private val TAG: String = ServerSocketProxy.javaClass.canonicalName ?: ServerSocketProxy.javaClass.simpleName
 
     private var networkCacheFile: File? = null
     private var databaseCacheFile: File? = null

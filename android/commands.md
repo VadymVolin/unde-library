@@ -17,5 +17,5 @@
 ## Build release version:
 
 ```shell
-./gradlew clean :unde-android-library:assembleRelease
+./gradlew clean assembleRelease
 ```
