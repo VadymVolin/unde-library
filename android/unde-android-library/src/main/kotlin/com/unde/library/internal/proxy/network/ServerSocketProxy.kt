@@ -30,33 +30,90 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Internal singleton responsible for managing the TCP socket connection to the Unde server.
+ *
+ * This object handles connection lifecycle (connect, disconnect, reconnect),
+ * message queueing (when offline), and bidirectional communication (sending/receiving [Message]).
+ * It runs its own CoroutineScope IO dispatcher.
+ */
 internal object ServerSocketProxy {
 
+    /**
+     * Logging tag for this class.
+     */
     private val TAG: String = ServerSocketProxy.javaClass.canonicalName ?: ServerSocketProxy.javaClass.simpleName
 
+    /**
+     * Enumeration of possible socket connection states.
+     */
     private enum class ConnectionState {
         DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING
     }
 
+    /**
+     * Thread-safe reference to the current [ConnectionState].
+     */
     private val connectionState = AtomicReference(ConnectionState.DISCONNECTED)
 
+    /**
+     * Scope for internal background operations.
+     */
     private var internalServerScope: CoroutineScope? = null
+
+    /**
+     * Job specifically for reading from the socket.
+     */
     private var readJob: Job? = null
+
+    /**
+     * Job specifically for writing to the socket (if using a dedicated job).
+     */
     private var writeJob: Job? = null
+
+    /**
+     * Job managing the connection attempt sequence.
+     */
     private var connectJob: Job? = null
 
+    /**
+     * Ktor SelectorManager for managing non-blocking I/O.
+     */
     private var internalServerSelectorManager: SelectorManager? = null
+
+    /**
+     * The active TCP socket instance.
+     */
     private var socket: Socket? = null
+
+    /**
+     * Channel for reading incoming data bytes.
+     */
     private var readChannel: ByteReadChannel? = null
+
+    /**
+     * Channel for writing outgoing data bytes.
+     */
     private var writeChannel: ByteWriteChannel? = null
 
+    /**
+     * Queue to hold messages when the client is offline/disconnected.
+     */
     private val messageQueue = ArrayDeque<Message>()
 
+    /**
+     * JSON configuration for serializing/deserializing [Message] objects.
+     */
     private val json = Json {
         ignoreUnknownKeys = true
         classDiscriminator = JsonTokenConstant.TYPE_TOKEN
     }
 
+    /**
+     * Initializes the server socket proxy.
+     *
+     * Sets up the CoroutineScope and SelectorManager, then initiates the connection process.
+     */
     internal fun initialize() {
         Log.d(TAG, "Initialize $TAG, enter")
         internalServerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -65,6 +122,13 @@ internal object ServerSocketProxy {
         Log.d(TAG, "Initialize $TAG, leave")
     }
 
+    /**
+     * Sends a message to the connected desktop server.
+     *
+     * If connected, sends immediately. If disconnected, queues the message for later delivery.
+     *
+     * @param message The [Message] to send.
+     */
     internal fun send(message: Message) {
         Log.d(TAG, "Send [${message.javaClass.simpleName}], enter")
         if (connectionState.get() == ConnectionState.CONNECTED) {
@@ -77,6 +141,11 @@ internal object ServerSocketProxy {
         Log.d(TAG, "Send [${message.javaClass.simpleName}], leave")
     }
 
+    /**
+     * Destroys the proxy, closing connections and cleaning up resources.
+     *
+     * Cancels all jobs and closes the socket.
+     */
     internal fun destroy() {
         Log.d(TAG, "Destroy, enter")
         connectionState.set(ConnectionState.DISCONNECTED)
@@ -104,6 +173,11 @@ internal object ServerSocketProxy {
         Log.d(TAG, "Destroy, leave")
     }
 
+    /**
+     * Initiates a connection attempt to the server.
+     *
+     * @param reconnectDelay Optional delay in milliseconds before starting the connection logic (used for backoff).
+     */
     private fun connect(reconnectDelay: Long? = null) {
         Log.d(TAG, "Connect (reconnect delay[$reconnectDelay]), enter")
         val scope = internalServerScope ?: return
@@ -148,6 +222,11 @@ internal object ServerSocketProxy {
         }
     }
 
+    /**
+     * Starts a coroutine loop to read incoming messages from the [readChannel].
+     *
+     * Continually reads lines from the socket until disconnected or cancelled.
+     */
     private fun startReadLoop() {
         Log.d(TAG, "startReadLoop scope[${internalServerScope != null}], readChannel[${readChannel != null}], connectionState[${connectionState.get()}], enter")
         val scope = internalServerScope ?: return
@@ -176,6 +255,11 @@ internal object ServerSocketProxy {
         Log.d(TAG, "startReadLoop, leave")
     }
 
+    /**
+     * Parses a raw line of text into a [Message] object.
+     *
+     * @param line Raw JSON string received from the socket.
+     */
     private fun handleMessage(line: String) = try {
         Log.d(TAG, "handleMessage, enter")
         when (val message = json.decodeFromString<Message>(line)) {
@@ -189,6 +273,13 @@ internal object ServerSocketProxy {
         Log.d(TAG, "handleMessage, leave")
     }
 
+    /**
+     * Writes a message to the [writeChannel].
+     *
+     * Serializes the message to JSON, prefixes it with length, and writes it to the socket.
+     *
+     * @param message The [Message] to write.
+     */
     private fun sendInternal(message: Message) {
         Log.d(TAG, "sendInternal [${message.javaClass.simpleName}] writeChannel[${writeChannel != null}], enter")
         val scope = internalServerScope ?: return
@@ -213,6 +304,11 @@ internal object ServerSocketProxy {
         }
     }
 
+    /**
+     * Flushes the [messageQueue], trying to send all pending messages.
+     *
+     * Stops if the connection drops during processing.
+     */
     private fun sendAllFromMessageQueue() {
         Log.d(TAG, "sendAllFromMessageQueue messageQueue[${messageQueue.size}], connectionState[${connectionState.get()}], enter")
         while (messageQueue.isNotEmpty() && connectionState.get() == ConnectionState.CONNECTED) {
@@ -226,6 +322,11 @@ internal object ServerSocketProxy {
         Log.d(TAG, "sendAllFromMessageQueue, leave")
     }
 
+    /**
+     * Handles cleanup after a socket disconnection event.
+     *
+     * Closes resources and triggers a reconnection schedule.
+     */
     private fun handleDisconnection() {
         Log.d(TAG, "handleDisconnection, enter")
         if (connectionState.get() == ConnectionState.DISCONNECTED) {
@@ -251,6 +352,9 @@ internal object ServerSocketProxy {
         Log.d(TAG, "handleDisconnection, leave")
     }
 
+    /**
+     * Schedules a delayed call to [connect] to attempt reconnection.
+     */
     private fun scheduleReconnect() {
         Log.d(TAG, "scheduleReconnect, enter")
         connectionState.set(ConnectionState.RECONNECTING)

@@ -8,10 +8,24 @@ import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.Sender
 import io.ktor.client.request.HttpRequestBuilder
 
+/**
+ * Ktor Interceptor (Sender) for capturing and handling network requests via the Unde Library.
+ *
+ * Can be installed in a Ktor [HttpClient] to capture traffic.
+ *
+ * Usage:
+ * ```
+ * val client = HttpClient(OkHttp) {
+ *     engine {
+ *         // ...
+ *     }
+ * }
+ * // Note: Installation mechanism depends on how this interceptor is designed to be plugged in (e.g. via install or direct usage).
+ * ```
+ */
 class UndeHttpInterceptor : suspend (Sender, HttpRequestBuilder) -> HttpClientCall {
 
     override suspend fun invoke(sender: Sender, requestBuilder: HttpRequestBuilder): HttpClientCall {
-
         return sender.execute(requestBuilder).also {
             val request = it.request
             val response = it.response
