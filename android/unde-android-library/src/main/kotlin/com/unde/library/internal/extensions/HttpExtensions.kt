@@ -9,16 +9,30 @@ import io.ktor.util.toMap
 import okio.Buffer
 import java.util.zip.GZIPInputStream
 
+/**
+ * Maximum size of the request/response body to read into memory (5MB).
+ */
 private const val DEFAULT_MAX_BODY_SIZE = 5 * 1024 * 1024L // 5MB
 
-internal fun io.ktor.client.request.HttpRequest.toUndeRequest() = UndeRequest(
+/**
+ * Converts a Ktor [HttpRequest] to [UndeRequest].
+ *
+ * @param sentRequestAtMillis Timestamp when the request was initiated.
+ * @return [UndeRequest] populated with request details.
+ */
+internal fun io.ktor.client.request.HttpRequest.toUndeRequest(sentRequestAtMillis: Long) = UndeRequest(
+    sentRequestAtMillis,
     this.url.toString(),
     this.method.value,
     this.headers.toMap(),
     this.content.toString()
 )
 
+/**
+ * Converts a Ktor [HttpResponse] to [UndeResponse].
+ */
 internal suspend fun io.ktor.client.statement.HttpResponse.toUndeResponse() = UndeResponse(
+    this.responseTime.timestamp,
     this.status.value,
     this.status.description,
     this.headers.toMap(),
@@ -26,14 +40,27 @@ internal suspend fun io.ktor.client.statement.HttpResponse.toUndeResponse() = Un
     this.bodyAsText()
 )
 
-internal fun okhttp3.Request.toUndeRequest() = UndeRequest(
+/**
+ * Converts an OkHttp [Request] to [UndeRequest].
+ *
+ * @param sentRequestAtMillis Timestamp when the request was initiated.
+ * @return [UndeRequest] populated with request details.
+ */
+internal fun okhttp3.Request.toUndeRequest(sentRequestAtMillis: Long) = UndeRequest(
+    sentRequestAtMillis,
     this.url.toString(),
     this.method,
     this.headers.toMultimap(),
     this.readOkHttpRequestBody()
 )
 
+/**
+ * Converts an OkHttp [Response] to [UndeResponse].
+ *
+ * @return [UndeResponse] populated with response details and body.
+ */
 internal fun okhttp3.Response.toUndeResponse() = UndeResponse(
+    this.receivedResponseAtMillis,
     this.code,
     this.message,
     this.headers.toMultimap(),
@@ -41,6 +68,12 @@ internal fun okhttp3.Response.toUndeResponse() = UndeResponse(
     this.readOkHttpResponseBody()
 )
 
+/**
+ * Reads the OkHttp request body into a string, respecting a max size limit.
+ *
+ * @param maxSize Maximum number of bytes to read (default 5MB).
+ * @return The body string or a placeholder if too large/null.
+ */
 private fun okhttp3.Request.readOkHttpRequestBody(maxSize: Long = DEFAULT_MAX_BODY_SIZE): String? {
     val body = this.body ?: return null
     
@@ -55,6 +88,13 @@ private fun okhttp3.Request.readOkHttpRequestBody(maxSize: Long = DEFAULT_MAX_BO
     return buffer.readString(charset)
 }
 
+/**
+ * Reads the OkHttp response body into a string, handling GZip encoding if present.
+ *
+ * Uses [peekBody] to avoid consuming the original response stream.
+ *
+ * @return The body string.
+ */
 private fun okhttp3.Response.readOkHttpResponseBody(): String {
     val peeked = this.peekBody(Long.MAX_VALUE)
 
@@ -63,7 +103,7 @@ private fun okhttp3.Response.readOkHttpResponseBody(): String {
     val data = if (isGzip) {
         try {
             GZIPInputStream(peeked.byteStream()).use { it.readBytes() }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return peeked.string()
         }
     } else {
