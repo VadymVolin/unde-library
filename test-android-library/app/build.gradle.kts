@@ -46,15 +46,15 @@ dependencies {
     implementation(libs.logging.interceptor)
 
     // local lib
-    implementation(files("libs/unde-android-library-debug.aar"))
-    api(libs.ktor.client)
-    api(libs.ktor.engine.client)
-    api(libs.ktor.websockets)
-    api(libs.ktor.json.serialization)
-    api(libs.kotlinx.json.serialization)
+//    implementation(files("libs/unde-android-library-debug.aar"))
+//    api(libs.ktor.client)
+//    api(libs.ktor.engine.client)
+//    api(libs.ktor.websockets)
+//    api(libs.ktor.json.serialization)
+//    api(libs.kotlinx.json.serialization)
 
     // remote lib
-//    implementation(libs.unde.android.library)
+    implementation(libs.unde.android.library)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

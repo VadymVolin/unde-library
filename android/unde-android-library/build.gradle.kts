@@ -65,13 +65,14 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
+
 mavenPublishing {
-  coordinates("io.github.vadymvolin", "unde-android-library", "0.0.1")
+  coordinates("io.github.vadymvolin", "unde-android-library", "0.0.2")
 
   pom {
     name.set("Unde Android Library")
     description.set("Unde Android Library")
-    inceptionYear.set("2025")
+    inceptionYear.set("2026")
     url.set("https://github.com/VadymVolin/unde-library/")
     licenses {
       license {
