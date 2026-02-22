@@ -12,14 +12,9 @@ internal object JsonTokenConstant {
     // values
 
     /**
-     * Value indicating a generic result message.
+     * Value indicating a plain message.
      */
-    const val TYPE_RESULT_TOKEN = "result"
-
-    /**
-     * Value indicating a command message.
-     */
-    const val TYPE_COMMAND_TOKEN = "command"
+    const val TYPE_PLAIN_TOKEN = "plain"
 
     /**
      * Value indicating a network traffic message.
