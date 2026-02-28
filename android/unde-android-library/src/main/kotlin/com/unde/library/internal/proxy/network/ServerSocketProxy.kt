@@ -41,13 +41,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.channels.onSuccess
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.io.EOFException
 import kotlinx.io.asOutputStream
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
@@ -319,15 +317,7 @@ internal object ServerSocketProxy {
         readJob = scope.launch {
             try {
                 while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
-                    runCatching {
-                        readChannel?.readFramedJsonSafe(true)
-                    }.onFailure {
-                        Log.w(TAG, "startReadLoop: cannot read server message", it)
-                        if (it is CancellationException || it is EOFException) throw it
-                    }.onSuccess {
-                        Log.d(TAG, "startReadLoop: message has been read successfully")
-                        handleMessage(it)
-                    }
+                    handleMessage(readChannel?.readFramedJsonSafe(true))
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
