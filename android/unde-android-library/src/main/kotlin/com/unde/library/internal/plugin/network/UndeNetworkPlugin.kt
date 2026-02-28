@@ -15,18 +15,17 @@ internal object UndeNetworkPlugin {
     /**
      * Logging tag.
      */
-    private val TAG: String = ServerSocketProxy.javaClass.canonicalName ?: ServerSocketProxy.javaClass.simpleName
+    private val TAG: String = UndeNetworkPlugin.javaClass.canonicalName ?: UndeNetworkPlugin.javaClass.simpleName
     /**
      * Processes an intercepted network request and response.
      *
      * Logs the event and forwards it to the [ServerSocketProxy] to be sent to the desktop tool.
-     * Can also trigger [CacheProxy] (currently commented out).
+     * Can also trigger [com.unde.library.internal.proxy.cache.CacheProxy] (currently commented out).
      *
      * @param undeRequestResponse The combined request and response data.
      */
     internal fun handleRequest(undeRequestResponse: UndeRequestResponse) {
-        Log.d(TAG, "UndeRequest: ${undeRequestResponse.request}")
-        Log.d(TAG, "UndeResponse: ${undeRequestResponse.response}")
+        Log.d(TAG, "Received new request-response")
         ServerSocketProxy.send(Message.Network(undeRequestResponse))
 //        CacheProxy.cacheNetwork(undeRequestResponse)
     }

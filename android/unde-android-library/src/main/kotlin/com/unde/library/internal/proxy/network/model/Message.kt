@@ -15,27 +15,15 @@ import kotlinx.serialization.json.JsonObject
 internal sealed interface Message {
 
     /**
-     * Represents a generic result message (often checking connection).
+     * Represents a plain receiving from the desktop tool.
      */
+    @SerialName(JsonTokenConstant.TYPE_PLAIN_TOKEN)
     @Serializable
-    @SerialName(JsonTokenConstant.TYPE_RESULT_TOKEN)
-    data class Result(
+    data class Plain(
         /**
-         * The string payload.
+         * The plain payload as a string.
          */
         val data: String
-    ) : Message
-
-    /**
-     * Represents a command receiving from the desktop tool.
-     */
-    @SerialName(JsonTokenConstant.TYPE_COMMAND_TOKEN)
-    @Serializable
-    data class Command(
-        /**
-         * The command payload as a generic JSON object.
-         */
-        val data: JsonObject
     ) : Message
 
     /**
