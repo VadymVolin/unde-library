@@ -16,7 +16,7 @@ Add the dependency to your module-level `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.vadymvolin:unde-android-library:0.0.1")
+    implementation("io.github.vadymvolin:unde-android-library:0.0.3-beta")
 }
 ```
 
@@ -40,11 +40,6 @@ class MyApplication : Application() {
         
         // OR with custom cache directories
         // undeLibrary.initialize(networkCacheFile = File(cacheDir, "network_cache"), databaseCacheFile = ...)
-    }
-
-    override fun onTerminate() {
-        super.onTerminate()
-        undeLibrary.destroy() // Clean up resources
     }
 }
 ```

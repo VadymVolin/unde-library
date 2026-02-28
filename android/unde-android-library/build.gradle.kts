@@ -67,7 +67,7 @@ java {
 }
 
 mavenPublishing {
-  coordinates("io.github.vadymvolin", "unde-android-library", "0.0.2")
+  coordinates("io.github.vadymvolin", "unde-android-library", "0.0.3-beta")
 
   pom {
     name.set("Unde Android Library")
@@ -94,7 +94,7 @@ mavenPublishing {
       developerConnection.set("scm:git:ssh://git@github.com/VadymVolin/unde-library.git")
     }
   }
-  
+
   publishToMavenCentral()
   signAllPublications()
 }

@@ -13,7 +13,7 @@ activityCompose = "1.8.0"
 composeBom = "2024.09.00"
 loggingInterceptor = "5.0.0-alpha.2"
 retrofit = "2.9.0"
-undeAndroidLibrary = "0.0.2"
+undeAndroidLibrary = "0.0.3-beta"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,4 +46,3 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-

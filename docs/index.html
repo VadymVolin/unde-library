@@ -1,197 +1,268 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Unde | Lightweight Android Network Debugger & Inspector</title>
+        <meta
+            name="description"
+            content="Unde is a lightweight Android library for real-time network inspection, offline caching, and debugging. Alternatives to Flipper/Chuck with desktop integration."
+        />
+        <meta
+            name="keywords"
+            content="Android debugging, network interceptor, OkHttp interceptor, Android network inspector, Flipper alternative, offline caching, Android SDK, Kotlin"
+        />
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unde | Lightweight Android Network Debugger & Inspector</title>
-    <meta name="description"
-        content="Unde is a lightweight Android library for real-time network inspection, offline caching, and debugging. Alternatives to Flipper/Chuck with desktop integration.">
-    <meta name="keywords"
-        content="Android debugging, network interceptor, OkHttp interceptor, Android network inspector, Flipper alternative, offline caching, Android SDK, Kotlin">
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website" />
+        <meta
+            property="og:url"
+            content="https://vadymvolin.github.io/unde-library/"
+        />
+        <meta
+            property="og:title"
+            content="Unde - The Lightweight Android Network Debugger"
+        />
+        <meta
+            property="og:description"
+            content="Inspect network traffic in real-time with offline support. The developer-first alternative to Flipper."
+        />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://vadymvolin.github.io/unde-library/">
-    <meta property="og:title" content="Unde - The Lightweight Android Network Debugger">
-    <meta property="og:description"
-        content="Inspect network traffic in real-time with offline support. The developer-first alternative to Flipper.">
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta
+            property="twitter:title"
+            content="Unde - Android Network Debugging Made Simple"
+        />
+        <meta
+            property="twitter:description"
+            content="Stop guessing. Start inspecting. Real-time network logs, offline caching, and zero-config setup for Android devs."
+        />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="Unde - Android Network Debugging Made Simple">
-    <meta property="twitter:description"
-        content="Stop guessing. Start inspecting. Real-time network logs, offline caching, and zero-config setup for Android devs.">
+        <!-- Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Doto:wght@700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Doto:wght@700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+        <link rel="stylesheet" href="styles.css" />
 
-    <link rel="stylesheet" href="styles.css">
+        <!-- Favicon Placeholder -->
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>"
+        />
+    </head>
 
-    <!-- Favicon Placeholder -->
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
-</head>
-
-<body class="dark-theme">
-
-    <nav class="navbar glass">
-        <div class="container nav-container">
-            <a href="#" class="logo">Unde<span class="highlight">.</span></a>
-            <div class="nav-links">
-                <a href="#features">Features</a>
-                <a href="#how-it-works">How it Works</a>
-                <a href="https://github.com/VadymVolin/unde-library" target="_blank" class="github-link">
-                    <svg height="24" width="24" viewBox="0 0 16 16" fill="currentColor">
-                        <path
-                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
-                        </path>
-                    </svg>
-                    GitHub
-                </a>
-            </div>
-            <button class="mobile-menu-btn" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
-
-    <header class="hero">
-        <div class="container hero-content">
-            <div class="hero-text">
-                <div class="badge">v0.0.2 Open Beta</div>
-                <h1>Network Debugging,<br> <span class="gradient-text">Reimagined for Android.</span></h1>
-                <p class="subtitle">A lightweight SDK and desktop companion to inspect, cache, and analyze network
-                    traffic in real-time. No complex setup. No bloat.</p>
-                <div class="cta-group">
-                    <a href="#how-it-works" class="btn btn-primary">Get Started</a>
-                    <a href="https://github.com/VadymVolin/unde-library" target="_blank" class="btn btn-secondary">View
-                        on GitHub</a>
+    <body class="dark-theme">
+        <nav class="navbar glass">
+            <div class="container nav-container">
+                <a href="#" class="logo"
+                    >Unde<span class="highlight">.</span></a
+                >
+                <div class="nav-links">
+                    <a href="#features">Features</a>
+                    <a href="#how-it-works">How it Works</a>
+                    <a
+                        href="https://github.com/VadymVolin/unde-library"
+                        target="_blank"
+                        class="github-link"
+                    >
+                        <svg
+                            height="24"
+                            width="24"
+                            viewBox="0 0 16 16"
+                            fill="currentColor"
+                        >
+                            <path
+                                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+                            ></path>
+                        </svg>
+                        GitHub
+                    </a>
                 </div>
+                <button class="mobile-menu-btn" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
-            <div class="hero-visual">
-                <div class="glass-card code-preview">
-                    <div class="window-controls">
-                        <span class="control red"></span>
-                        <span class="control yellow"></span>
-                        <span class="control green"></span>
+        </nav>
+
+        <header class="hero">
+            <div class="container hero-content">
+                <div class="hero-text">
+                    <div class="badge">v0.0.3 Open Beta</div>
+                    <h1>
+                        Network Debugging,<br />
+                        <span class="gradient-text"
+                            >Reimagined for Android.</span
+                        >
+                    </h1>
+                    <p class="subtitle">
+                        A lightweight SDK and desktop companion to inspect,
+                        cache, and analyze network traffic in real-time. No
+                        complex setup. No bloat.
+                    </p>
+                    <div class="cta-group">
+                        <a href="#how-it-works" class="btn btn-primary"
+                            >Get Started</a
+                        >
+                        <a
+                            href="https://github.com/VadymVolin/unde-library"
+                            target="_blank"
+                            class="btn btn-secondary"
+                            >View on GitHub</a
+                        >
                     </div>
-                    <pre><code class="language-kotlin">val client = OkHttpClient.Builder()
+                </div>
+                <div class="hero-visual">
+                    <div class="glass-card code-preview">
+                        <div class="window-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <pre><code class="language-kotlin">val client = OkHttpClient.Builder()
     .addInterceptor(UndeHttpInterceptor())
     .build()
 
 // That's it. You're debugging.
 // 🚀 Requests streaming to desktop
 // 💾 Responses caching to disk</code></pre>
-                </div>
-            </div>
-        </div>
-        <div class="glow-bg"></div>
-    </header>
-
-    <section id="features" class="features">
-        <div class="container">
-            <h2 class="section-title">Why Unde?</h2>
-            <div class="features-grid">
-                <div class="feature-card glass">
-                    <div class="icon">⚡</div>
-                    <h3>Real-Time Inspection</h3>
-                    <p>Stream headers, bodies, and timings instantly to your desktop. Spot errors before your users do.
-                    </p>
-                </div>
-                <div class="feature-card glass">
-                    <div class="icon">💾</div>
-                    <h3>Offline-First Caching</h3>
-                    <p>Debug anywhere. Unde automatically caches responses (GZIP compressed) to device storage. Play
-                        them back later.</p>
-                </div>
-                <div class="feature-card glass">
-                    <div class="icon">🔌</div>
-                    <h3>Zero-Config Connectivity</h3>
-                    <p>Works seamlessly with Emulators (auto-detects 10.0.2.2) and physical devices via ADB reverse
-                        tunneling.</p>
-                </div>
-                <div class="feature-card glass">
-                    <div class="icon">🪶</div>
-                    <h3>Lightweight & Modular</h3>
-                    <p>Built with Kotlin. Separates internal logic from public APIs. Won't slow down your debug builds.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="how-it-works" class="how-it-works">
-        <div class="container">
-            <h2 class="section-title">Get Started in Minutes</h2>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">01</div>
-                        <h3>Add Dependency</h3>
                     </div>
-                    <div class="code-block glass">
-                        <pre><code class="language-kotlin">dependencies {
-    implementation("io.github.vadymvolin:unde-android-library:0.0.2")
+                </div>
+            </div>
+            <div class="glow-bg"></div>
+        </header>
+
+        <section id="features" class="features">
+            <div class="container">
+                <h2 class="section-title">Why Unde?</h2>
+                <div class="features-grid">
+                    <div class="feature-card glass">
+                        <div class="icon">⚡</div>
+                        <h3>Real-Time Inspection</h3>
+                        <p>
+                            Stream headers, bodies, and timings instantly to
+                            your desktop. Spot errors before your users do.
+                        </p>
+                    </div>
+                    <div class="feature-card glass">
+                        <div class="icon">💾</div>
+                        <h3>Offline-First Caching</h3>
+                        <p>
+                            Debug anywhere. Unde automatically caches responses
+                            (GZIP compressed) to device storage. Play them back
+                            later.
+                        </p>
+                    </div>
+                    <div class="feature-card glass">
+                        <div class="icon">🔌</div>
+                        <h3>Zero-Config Connectivity</h3>
+                        <p>
+                            Works seamlessly with Emulators (auto-detects
+                            10.0.2.2) and physical devices via ADB reverse
+                            tunneling.
+                        </p>
+                    </div>
+                    <div class="feature-card glass">
+                        <div class="icon">🪶</div>
+                        <h3>Lightweight & Modular</h3>
+                        <p>
+                            Built with Kotlin. Separates internal logic from
+                            public APIs. Won't slow down your debug builds.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="how-it-works">
+            <div class="container">
+                <h2 class="section-title">Get Started in Minutes</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-header">
+                            <div class="step-number">01</div>
+                            <h3>Add Dependency</h3>
+                        </div>
+                        <div class="code-block glass">
+                            <pre><code class="language-kotlin">dependencies {
+    implementation("io.github.vadymvolin:unde-android-library:0.0.3-beta")
 }</code></pre>
-                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                            <button class="copy-btn" aria-label="Copy code">
+                                Copy
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">02</div>
-                        <h3>Initialize</h3>
-                    </div>
-                    <div class="code-block glass">
-                        <pre><code class="language-kotlin">// In your Application.onCreate()
+                    <div class="step">
+                        <div class="step-header">
+                            <div class="step-number">02</div>
+                            <h3>Initialize</h3>
+                        </div>
+                        <div class="code-block glass">
+                            <pre><code class="language-kotlin">// In your Application.onCreate()
 undeLibrary.initialize()</code></pre>
-                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                            <button class="copy-btn" aria-label="Copy code">
+                                Copy
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="step">
-                    <div class="step-header">
-                        <div class="step-number">03</div>
-                        <h3>Attach Interceptor</h3>
-                    </div>
-                    <div class="code-block glass">
-                        <pre><code class="language-kotlin">val client = OkHttpClient.Builder()
+                    <div class="step">
+                        <div class="step-header">
+                            <div class="step-number">03</div>
+                            <h3>Attach Interceptor</h3>
+                        </div>
+                        <div class="code-block glass">
+                            <pre><code class="language-kotlin">val client = OkHttpClient.Builder()
     .addInterceptor(UndeHttpInterceptor())
     .build()</code></pre>
-                        <button class="copy-btn" aria-label="Copy code">Copy</button>
+                            <button class="copy-btn" aria-label="Copy code">
+                                Copy
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <footer class="footer">
-        <div class="container footer-content">
-            <div class="footer-left">
-                <span class="logo">Unde<span class="highlight">.</span></span>
-                <p>Network debugging for the modern Android developer.</p>
+        <footer class="footer">
+            <div class="container footer-content">
+                <div class="footer-left">
+                    <span class="logo"
+                        >Unde<span class="highlight">.</span></span
+                    >
+                    <p>Network debugging for the modern Android developer.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/VadymVolin/unde-library"
+                        >Android Library</a
+                    >
+                    <a href="https://github.com/VadymVolin/unde-server"
+                        >Desktop Server</a
+                    >
+                    <a
+                        href="https://github.com/VadymVolin/unde-library/blob/main/LICENSE"
+                        >License (MIT)</a
+                    >
+                </div>
             </div>
-            <div class="footer-links">
-                <a href="https://github.com/VadymVolin/unde-library">Android Library</a>
-                <a href="https://github.com/VadymVolin/unde-server">Desktop Server</a>
-                <a href="https://github.com/VadymVolin/unde-library/blob/main/LICENSE">License (MIT)</a>
+            <div class="footer-bottom">
+                <p>
+                    &copy;
+                    <script>
+                        document.write(new Date().getFullYear());
+                    </script>
+                    Vadym Volin. All rights reserved.
+                </p>
             </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy;
-                <script>document.write(new Date().getFullYear())</script> Vadym Volin. All rights reserved.
-            </p>
-        </div>
-    </footer>
+        </footer>
 
-    <script src="script.js"></script>
-</body>
-
+        <script src="script.js"></script>
+    </body>
 </html>
