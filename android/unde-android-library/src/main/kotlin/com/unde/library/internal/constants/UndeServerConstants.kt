@@ -32,7 +32,7 @@ internal const val DEFAULT_SERVER_SOCKET_PORT = 8081
 /**
  * Delay in milliseconds before attempting to reconnect to the server after a disconnection.
  */
-internal const val DEFAULT_RECONNECT_DELAY_MS = 3000L
+internal const val DEFAULT_RECONNECT_DELAY_MS = 5000L
 
 /**
  * Default timeout to get ping-pong result from the server.

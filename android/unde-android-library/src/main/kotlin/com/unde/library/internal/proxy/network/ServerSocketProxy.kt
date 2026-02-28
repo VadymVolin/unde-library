@@ -31,16 +31,23 @@ import io.ktor.utils.io.writeLong
 import io.ktor.utils.io.writePacket
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.channels.onSuccess
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.EOFException
 import kotlinx.io.asOutputStream
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
@@ -48,6 +55,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import okhttp3.internal.closeQuietly
+import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
@@ -93,6 +101,7 @@ internal object ServerSocketProxy {
      * Job specifically for writing to the socket (if using a dedicated job).
      */
     private var writeJob: Job? = null
+    private var writeQueueChannel: Channel<Message>? = null
 
     /**
      * Job managing the connection attempt sequence.
@@ -122,7 +131,7 @@ internal object ServerSocketProxy {
     /**
      * Queue to hold messages when the client is offline/disconnected.
      */
-    private val messageQueue = ArrayDeque<Message>()
+    private val messageQueue = ConcurrentLinkedDeque<Message>()
 
     /**
      * JSON configuration for serializing/deserializing [Message] objects.
@@ -215,6 +224,8 @@ internal object ServerSocketProxy {
         val scope = internalServerScope ?: return
         val selectorManager = internalServerSelectorManager ?: return
 
+        writeQueueChannel?.cancel()
+        writeQueueChannel = Channel(capacity = Channel.UNLIMITED)
         readJob?.cancel()
         writeJob?.cancel()
         connectJob?.cancel()
@@ -246,6 +257,7 @@ internal object ServerSocketProxy {
                 ensureActive()
                 connectionState.set(ConnectionState.CONNECTED)
                 startReadLoop()
+                startWriteQueueListening()
                 sendAllFromMessageQueue()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -266,7 +278,7 @@ internal object ServerSocketProxy {
             Log.d(TAG, "serverHandshake, client is not connecting, current state is ${connectionState.get()}")
             handshakeResult = false
         } else {
-            val asyncPingResult = scope.async {
+            val asyncPingResult = scope.async(start = CoroutineStart.DEFAULT) {
                 Log.d(TAG, "serverHandshake: start reading handshake response asynchronously")
                 withTimeoutOrNull(DEFAULT_PING_TIMEOUT_MS) {
                     runCatching {
@@ -299,15 +311,23 @@ internal object ServerSocketProxy {
     private fun startReadLoop() {
         Log.d(TAG, "startReadLoop scope[${internalServerScope != null}], readChannel[${readChannel != null}], connectionState[${connectionState.get()}], enter")
         val scope = internalServerScope ?: return
+        if (connectionState.get() != ConnectionState.CONNECTED) {
+            Log.d(TAG, "startReadLoop, client is not connected, current state is ${connectionState.get()}")
+            return
+        }
         readJob?.cancel()
         readJob = scope.launch {
             try {
                 while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
-                    handleMessage(runCatching {
+                    runCatching {
                         readChannel?.readFramedJsonSafe(true)
                     }.onFailure {
                         Log.w(TAG, "startReadLoop: cannot read server message", it)
-                    }.getOrNull())
+                        if (it is CancellationException || it is EOFException) throw it
+                    }.onSuccess {
+                        Log.d(TAG, "startReadLoop: message has been read successfully")
+                        handleMessage(it)
+                    }
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -318,6 +338,31 @@ internal object ServerSocketProxy {
             }
         }
         Log.d(TAG, "startReadLoop, leave")
+    }
+
+    private fun startWriteQueueListening() {
+        Log.d(TAG, "startWriteQueueListening scope[${internalServerScope != null}], connectionState[${connectionState.get()}], enter")
+        val scope = internalServerScope ?: return
+        if (connectionState.get() != ConnectionState.CONNECTED) {
+            Log.d(TAG, "startWriteQueueListening, client is not connected, current state is ${connectionState.get()}")
+            return
+        }
+        writeJob?.cancel()
+        writeJob = scope.launch {
+            writeQueueChannel?.consumeEach {
+                try {
+                    ensureActive()
+                    Log.d(TAG, "startWriteQueueListening, send")
+                    writeChannel?.writeFramedJsonSafe(it, true)
+                    Log.d(TAG, "startWriteQueueListening => Sent message[${it.javaClass.simpleName}]")
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Log.e(TAG, "startWriteQueueListening => Failed to send message: ${e.message}", e)
+                    handleDisconnection()
+                }
+            }
+            Log.d(TAG, "startWriteQueueListening scope[${internalServerScope != null}], connectionState[${connectionState.get()}], leave")
+        }
     }
 
     /**
@@ -347,24 +392,16 @@ internal object ServerSocketProxy {
      */
     private fun sendInternal(message: Message) {
         Log.d(TAG, "sendInternal [${message.javaClass.simpleName}] writeChannel[${writeChannel != null}], enter")
-        val scope = internalServerScope ?: return
-
         if (connectionState.get() != ConnectionState.CONNECTED) {
             Log.d(TAG, "sendInternal, client is not connected, current state is ${connectionState.get()}")
             return
         }
-
-        scope.launch {
-            try {
-                writeChannel?.writeFramedJsonSafe(message, true)
-                Log.d(TAG, "Sent message[${message.javaClass.simpleName}]")
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Log.e(TAG, "Failed to send message: ${e.message}", e)
-                handleDisconnection()
-            }
-            Log.d(TAG, "sendInternal [${message.javaClass.simpleName}], leave")
+        writeQueueChannel?.trySend(message)?.onSuccess {
+            Log.d(TAG, "sendInternal [${message.javaClass.simpleName}], has been enqueued")
+        }?.onFailure {
+            Log.w(TAG, "sendInternal [${message.javaClass.simpleName}], hasn't been enqueued", it)
         }
+        Log.d(TAG, "sendInternal [${message.javaClass.simpleName}], leave")
     }
 
     /**
