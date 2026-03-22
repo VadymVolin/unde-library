@@ -36,5 +36,18 @@ internal object JsonTokenConstant {
      */
     const val TYPE_LOGCAT_TOKEN = "logcat"
 
-    // next...
+    /**
+     * Value indicating a session init message.
+     */
+    const val TYPE_SESSION_INIT_TOKEN = "session_init"
+
+    /**
+     * Value indicating a session resume message.
+     */
+    const val TYPE_SESSION_RESUME_TOKEN = "session_resume"
+
+    /**
+     * Value indicating a session ack message.
+     */
+    const val TYPE_SESSION_ACK_TOKEN = "session_ack"
 }

@@ -63,14 +63,31 @@ internal sealed interface Message {
     ) : Message
 
     /**
-     * Represents device logcat output.
+     * First connection, request new session.
      */
-    @SerialName(JsonTokenConstant.TYPE_LOGCAT_TOKEN)
+    @SerialName(JsonTokenConstant.TYPE_SESSION_INIT_TOKEN)
     @Serializable
-    data class Logcat(
-        /**
-         * The log entry payload.
-         */
-        val data: JsonObject
+    data class SessionInit(
+        val clientId: String
+    ) : Message
+
+    /**
+     * Reconnection, resume existing session.
+     */
+    @SerialName(JsonTokenConstant.TYPE_SESSION_RESUME_TOKEN)
+    @Serializable
+    data class SessionResume(
+        val clientId: String,
+        val sessionId: String
+    ) : Message
+
+    /**
+     * Server confirms session established.
+     */
+    @SerialName(JsonTokenConstant.TYPE_SESSION_ACK_TOKEN)
+    @Serializable
+    data class SessionAck(
+        val sessionId: String,
+        val resumed: Boolean
     ) : Message
 }

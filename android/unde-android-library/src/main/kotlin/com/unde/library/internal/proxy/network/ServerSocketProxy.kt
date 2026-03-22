@@ -14,7 +14,9 @@ import com.unde.library.internal.proxy.network.ServerSocketProxy.messageQueue
 import com.unde.library.internal.proxy.network.ServerSocketProxy.readChannel
 import com.unde.library.internal.proxy.network.ServerSocketProxy.writeChannel
 import com.unde.library.internal.proxy.network.model.Message
+import com.unde.library.internal.proxy.network.session.SessionManager
 import com.unde.library.internal.utils.DeviceManager
+import com.unde.library.internal.constants.DEFAULT_PING_INTERVAL_SEC
 import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket
@@ -107,6 +109,21 @@ internal object ServerSocketProxy {
     private var connectJob: Job? = null
 
     /**
+     * Job specifically for the keep-alive heartbeat.
+     */
+    private var heartbeatJob: Job? = null
+
+    /**
+     * Counter for connection attempts
+     */
+    private var reconnectAttempt: Int = 0
+
+    /**
+     * Tracking timestamp for the last message received from server
+     */
+    private var lastMessageReceivedTimestampNanos: Long = 0L
+
+    /**
      * Ktor SelectorManager for managing non-blocking I/O.
      */
     private var internalServerSelectorManager: SelectorManager? = null
@@ -184,6 +201,7 @@ internal object ServerSocketProxy {
         readJob?.cancel()
         writeJob?.cancel()
         connectJob?.cancel()
+        heartbeatJob?.cancel()
 
         try {
             socket?.close()
@@ -201,6 +219,7 @@ internal object ServerSocketProxy {
         internalServerSelectorManager = null
 
         messageQueue.clear()
+        SessionManager.clearSession()
 
         Log.d(TAG, "Destroy, leave")
     }
@@ -254,8 +273,10 @@ internal object ServerSocketProxy {
                 }
                 ensureActive()
                 connectionState.set(ConnectionState.CONNECTED)
+                reconnectAttempt = 0
                 startReadLoop()
                 startWriteQueueListening()
+                startHeartbeatLoop()
                 sendAllFromMessageQueue()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -286,18 +307,29 @@ internal object ServerSocketProxy {
                     }.getOrNull()
                 }
             }
-            val message = Message.Plain("Ping")
+            
+            val message = if (SessionManager.sessionId == null) {
+                Message.SessionInit(SessionManager.clientId)
+            } else {
+                Message.SessionResume(SessionManager.clientId, SessionManager.sessionId!!)
+            }
             writeChannel?.writeFramedJsonSafe(message, true)
             Log.d(TAG, "serverHandshake => Sent message[${message.javaClass.simpleName}]")
-            asyncPingResult.await()?.let {
-                handleMessage(it)
-                if (it is Message.Plain) {
-                    handshakeResult = it.data == "Pong"
+            
+            asyncPingResult.await()?.let { response ->
+                handleMessage(response)
+                if (response is Message.SessionAck) {
+                    SessionManager.sessionId = response.sessionId
+                    handshakeResult = true
                 }
             } ?: { handshakeResult = false }
+            
+            if (!handshakeResult) {
+                SessionManager.clearSession()
+            }
         }
         return handshakeResult.also {
-            Log.d(TAG, "serverHandshake [${message.javaClass.simpleName}], result [$it], leave")
+            Log.d(TAG, "serverHandshake [sessionId=${SessionManager.sessionId}], result [$it], leave")
         }
     }
 
@@ -317,7 +349,9 @@ internal object ServerSocketProxy {
         readJob = scope.launch {
             try {
                 while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
-                    handleMessage(readChannel?.readFramedJsonSafe(true))
+                    val msg = readChannel?.readFramedJsonSafe(true)
+                    lastMessageReceivedTimestampNanos = System.nanoTime()
+                    handleMessage(msg)
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -328,6 +362,38 @@ internal object ServerSocketProxy {
             }
         }
         Log.d(TAG, "startReadLoop, leave")
+    }
+
+    private fun startHeartbeatLoop() {
+        Log.d(TAG, "startHeartbeatLoop, enter")
+        val scope = internalServerScope ?: return
+        
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            try {
+                while (isActive && connectionState.get() == ConnectionState.CONNECTED) {
+                    delay(DEFAULT_PING_INTERVAL_SEC)
+                    if (connectionState.get() != ConnectionState.CONNECTED) break
+                    
+                    val timestampBeforePing = System.nanoTime()
+                    sendInternal(Message.Plain("Ping"))
+                    
+                    delay(DEFAULT_PING_TIMEOUT_MS)
+                    if (connectionState.get() != ConnectionState.CONNECTED) break
+                    
+                    if (lastMessageReceivedTimestampNanos < timestampBeforePing) {
+                        Log.w(TAG, "Heartbeat: No message received since Ping, disconnecting")
+                        handleDisconnection()
+                        break
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.e(TAG, "Heartbeat loop error: ${e.message}", e)
+                handleDisconnection()
+            }
+        }
+        Log.d(TAG, "startHeartbeatLoop, leave")
     }
 
     private fun startWriteQueueListening() {
@@ -363,6 +429,17 @@ internal object ServerSocketProxy {
     private fun handleMessage(message: Message?) = try {
         Log.d(TAG, "handleMessage, enter")
         when (message) {
+            is Message.SessionAck -> {
+                Log.d(TAG, "Received SessionAck: sessionId=${message.sessionId}, resumed=${message.resumed}")
+                SessionManager.sessionId = message.sessionId
+            }
+            is Message.Plain -> {
+                if (message.data == "Pong") {
+                    Log.d(TAG, "Heartbeat: Received Pong")
+                } else {
+                    Log.d(TAG, "Received message: \${message.javaClass.simpleName} - \$message")
+                }
+            }
             else -> {
                 Log.d(TAG, "Received message: ${message?.javaClass?.simpleName} - $message")
             }
@@ -441,6 +518,7 @@ internal object ServerSocketProxy {
 
         readJob?.cancel()
         writeJob?.cancel()
+        heartbeatJob?.cancel()
 
         try {
             readChannel = null
@@ -463,8 +541,14 @@ internal object ServerSocketProxy {
     private fun scheduleReconnect() {
         Log.d(TAG, "scheduleReconnect, enter")
         connectionState.set(ConnectionState.RECONNECTING)
-        Log.d(TAG, "Scheduling reconnect attempt in ${DEFAULT_RECONNECT_DELAY_MS}ms")
-        connect(DEFAULT_RECONNECT_DELAY_MS)
+        
+        val maxAttemptLimit = 10
+        val effectiveAttempt = reconnectAttempt.coerceAtMost(maxAttemptLimit)
+        val backoffDelay = (DEFAULT_RECONNECT_DELAY_MS * (1L shl effectiveAttempt)).coerceAtMost(60000L)
+        reconnectAttempt++
+        
+        Log.d(TAG, "Scheduling reconnect attempt in ${backoffDelay}ms (attempt #$reconnectAttempt)")
+        connect(backoffDelay)
         Log.d(TAG, "scheduleReconnect, leave")
     }
 
