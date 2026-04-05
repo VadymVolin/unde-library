@@ -297,7 +297,7 @@ internal object ServerSocketProxy {
             Log.d(TAG, "serverHandshake, client is not connecting, current state is ${connectionState.get()}")
             handshakeResult = false
         } else {
-            val asyncPingResult = scope.async(start = CoroutineStart.DEFAULT) {
+            val asyncSessionResult = scope.async(start = CoroutineStart.DEFAULT) {
                 Log.d(TAG, "serverHandshake: start reading handshake response asynchronously")
                 withTimeoutOrNull(DEFAULT_PING_TIMEOUT_MS) {
                     runCatching {
@@ -308,15 +308,14 @@ internal object ServerSocketProxy {
                 }
             }
             
-            val message = if (SessionManager.sessionId == null) {
-                Message.SessionInit(SessionManager.clientId)
-            } else {
-                Message.SessionResume(SessionManager.clientId, SessionManager.sessionId!!)
-            }
+            val message = SessionManager.sessionId?.let {
+                Message.SessionResume(SessionManager.clientId, it)
+            } ?: Message.SessionInit(SessionManager.clientId)
+            
             writeChannel?.writeFramedJsonSafe(message, true)
             Log.d(TAG, "serverHandshake => Sent message[${message.javaClass.simpleName}]")
             
-            asyncPingResult.await()?.let { response ->
+            asyncSessionResult.await()?.let { response ->
                 handleMessage(response)
                 if (response is Message.SessionAck) {
                     SessionManager.sessionId = response.sessionId
